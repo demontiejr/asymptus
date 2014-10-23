@@ -17,7 +17,7 @@
 #include "llvm/IR/Constants.h"
 #include "llvm/Pass.h"
 
-#include "DepGraph.h"
+#include "../util/DepGraph.h"
 
 using namespace llvm;
 

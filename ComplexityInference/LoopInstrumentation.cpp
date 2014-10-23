@@ -232,9 +232,9 @@ Value *LoopInstrumentation::createCounter(Loop *L, Twine varName, Function &F) {
     return counter;
 }
 
-void LoopInstrumentation::recoursiveInc(Loop *L, AllocaInst *ptr) {
+/*void LoopInstrumentation::recoursiveInc(Loop *L, AllocaInst *ptr) {
     
-}
+}*/
 
 CallInst *LoopInstrumentation::createPrintfCall(Module *module, Instruction *insertPt, Value *param, Twine dbg) {
     LLVMContext& ctx = module->getContext();

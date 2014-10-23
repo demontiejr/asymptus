@@ -3,4 +3,4 @@ syntax: glob
 *.o
 *.d
 
-./Release+Asserts/*
+./Debug+Asserts/*
