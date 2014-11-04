@@ -7,6 +7,8 @@
 #include "llvm/Transforms/Utils/BasicBlockUtils.h"
 #include "llvm/DebugInfo.h"
 
+#define END_NODE 9999
+
 LoopInstrumentation::LoopInstrumentation() : FunctionPass(ID) {
     this->printf = NULL;
 }
@@ -155,58 +157,6 @@ static void generateAdd(IRBuilder<> builder, AllocaInst* ptr, LLVMContext &ctx, 
     builder.CreateStore(inc, ptr);
 }
 
-static void generateInc(IRBuilder<> builder, AllocaInst* ptr, LLVMContext &ctx) {
-    generateAdd(builder, ptr, ctx, 1);
-}
-
-/*Value *LoopInstrumentation::createCounter(Loop *L, Twine varName, Function &F) {
-    IRBuilder<> builder(F.getEntryBlock().getFirstInsertionPt());
-    
-    LLVMContext& ctx = F.getParent()->getContext();
-    
-    AllocaInst* counter = builder.CreateAlloca(Type::getInt32Ty(ctx), NULL, varName);
-    
-    //builder.SetInsertPoint(&(*F.getEntryBlock().rbegin()));
-    builder.CreateStore(ConstantInt::get(Type::getInt32Ty(ctx), 0), counter);
-    
-    BasicBlock *loopHeader = L->getHeader();
-    builder.SetInsertPoint(loopHeader->getFirstInsertionPt());
-    generateInc(builder, counter, ctx);
-    
-    //Add inc instruction for sub loops
-    for (Loop::iterator i = L->begin(); i != L->end(); i++) {
-        Loop* innerLoop = *i;
-        builder.SetInsertPoint(innerLoop->getHeader()->getFirstInsertionPt());
-        generateInc(builder, counter, ctx);
-    }
-    return counter;
-}*/
-
-/*Value *LoopInstrumentation::createCounter(Loop *L, Twine varName, Function &F) {
-    IRBuilder<> builder(F.getEntryBlock().getFirstInsertionPt());
-    
-    LLVMContext& ctx = F.getParent()->getContext();
-    
-    AllocaInst* counter = builder.CreateAlloca(Type::getInt32Ty(ctx), NULL, varName);
-    
-    //builder.SetInsertPoint(&(*F.getEntryBlock().rbegin()));
-    builder.CreateStore(ConstantInt::get(Type::getInt32Ty(ctx), 0), counter);
-    
-    BasicBlock *loopHeader = L->getHeader();
-    builder.SetInsertPoint(loopHeader->getFirstInsertionPt());
-    generateInc(builder, counter, ctx);
-    
-    //Add inc instruction for sub loops
-    std::vector<BasicBlock*> blocks = L->getBlocks();
-    for (std::vector<BasicBlock*>::iterator i = blocks.begin(); i != blocks.end(); i++) {
-        BasicBlock* BB = *i;
-        int nInst = BB->getInstList().size();
-        builder.SetInsertPoint(BB->getFirstInsertionPt());
-        generateAdd(builder, counter, ctx, nInst);
-    }
-    return counter;
-}*/
-
 Value *LoopInstrumentation::createCounter(Loop *L, Twine varName, Function &F) {
     IRBuilder<> builder(F.getEntryBlock().getFirstInsertionPt());
     
@@ -217,24 +167,107 @@ Value *LoopInstrumentation::createCounter(Loop *L, Twine varName, Function &F) {
     //builder.SetInsertPoint(&(*F.getEntryBlock().rbegin()));
     builder.CreateStore(ConstantInt::get(Type::getInt32Ty(ctx), 0), counter);
     
-    BasicBlock *loopHeader = L->getHeader();
-    builder.SetInsertPoint(loopHeader->getFirstInsertionPt());
-    generateInc(builder, counter, ctx);
+    recoursiveInc(L, counter, ctx);
     
-    //Add inc instruction for sub loops
-    std::vector<BasicBlock*> blocks = L->getBlocks();
-    for (std::vector<BasicBlock*>::iterator i = blocks.begin(); i != blocks.end(); i++) {
-        BasicBlock* BB = *i;
-        int nInst = BB->getInstList().size();
-        builder.SetInsertPoint(BB->getFirstInsertionPt());
-        generateAdd(builder, counter, ctx, nInst);
-    }
     return counter;
 }
 
-/*void LoopInstrumentation::recoursiveInc(Loop *L, AllocaInst *ptr) {
+// bellman-ford
+int longestPath(std::map<long, std::vector<std::pair<long, int> > > graph, BasicBlock* start) {
+    std::map<long, int> d;
     
-}*/
+    std::vector<long> nodes;
+    
+    typedef std::map<long, std::vector<std::pair<long, int> > >::iterator it_type;
+    for (it_type iterator = graph.begin(); iterator != graph.end(); iterator++) {
+        d[iterator->first] = -1;
+        nodes.push_back(iterator->first);
+    }
+    
+    d[(long)start] = 0;
+        
+    for (size_t i=0; i < nodes.size(); i++) {
+        for (std::vector<long>::iterator ui = nodes.begin(); ui != nodes.end(); ui++) {
+            long u = *ui;
+            
+            std::vector<std::pair<long, int> > neighbors = graph[u];
+            for (std::vector<std::pair<long, int> >::iterator vi = neighbors.begin(); vi != neighbors.end(); vi++) {
+                std::pair<long, int> v = *vi;
+                if (d[v.first] < d[u] + v.second) {
+                    d[v.first] = d[u] + v.second;
+                }
+            }
+        }
+    }
+        
+    return d[END_NODE];
+}
+
+void LoopInstrumentation::recoursiveInc(Loop *L, AllocaInst *ptr, LLVMContext& ctx) {
+    BasicBlock* header = L->getHeader();
+    
+    std::vector<Loop*> subLoops = L->getSubLoops();
+    std::vector<BasicBlock*> blocks = L->getBlocks();
+    
+    std::map<long, std::vector<std::pair<long, int> > > graph;
+    // create end node
+    graph[END_NODE] = std::vector<std::pair<long, int> >();
+    
+    for (std::vector<BasicBlock*>::iterator i = blocks.begin(); i != blocks.end(); i++) {
+        BasicBlock* BB = *i;
+        
+        int isInnerBlock = false;
+        for (std::vector<Loop*>::iterator li = subLoops.begin(); li != subLoops.end(); li++) {
+            Loop* innerLoop = *li;
+            if (innerLoop->contains(BB)) {
+                isInnerBlock = true;
+            }
+        }
+        
+        if (isInnerBlock) continue;
+        
+        if (!graph.count((long)BB)) {
+            graph[(long)BB] = std::vector<std::pair<long, int> >();
+        }
+        
+        // count instructions
+        int nInst = BB->getInstList().size();
+        // get successors
+        for (succ_iterator PI = succ_begin(BB), E = succ_end(BB); PI != E; ++PI) {
+            BasicBlock* succ = *PI;
+            
+            long succAddr = (long) succ;
+            
+            // ignore back edges
+            if (succ == header || !L->contains(succ)) {
+                succAddr = END_NODE;
+            } else {
+                for (std::vector<Loop*>::iterator li = subLoops.begin(); li != subLoops.end(); li++) {
+                    Loop* innerLoop = *li;
+                    if (innerLoop->contains(succ)) {
+                        BasicBlock* exBB = innerLoop->getExitBlock();
+                        if (!exBB)
+                            break;
+                        succAddr = (long) exBB;
+                    }
+                }
+            }
+            
+            // add to the graph
+            graph[(long)BB].push_back(std::pair<long, int>(succAddr, nInst));
+        }
+    }
+    
+    int pathCost = longestPath(graph, header);
+    
+    IRBuilder<> builder(header->getFirstInsertionPt());
+    generateAdd(builder, ptr, ctx, pathCost);
+    
+    for (std::vector<Loop*>::iterator li = subLoops.begin(); li != subLoops.end(); li++) {
+        Loop* innerLoop = *li;
+        recoursiveInc(innerLoop, ptr, ctx);
+    }
+}
 
 CallInst *LoopInstrumentation::createPrintfCall(Module *module, Instruction *insertPt, Value *param, Twine dbg) {
     LLVMContext& ctx = module->getContext();

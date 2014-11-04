@@ -37,6 +37,8 @@ private:
     
     Value *createCounter(Loop *L, Twine varName, Function &F);
     
+    void recoursiveInc(Loop *L, AllocaInst *ptr, LLVMContext& ctx);
+    
     CallInst *createPrintfCall(Module *module, Instruction *insertPoint, Value *param, Twine dbg);
     
     Function *getPrintf(Module *module);
@@ -61,7 +63,7 @@ private:
             formatTy = "";
         }
         return getConstString(module, Twine("format")+formatTy,
-                              Twine("<LoopInstr> %s: %s = ") + format + Twine("\n"));
+                              Twine("\n<LoopInstr> %s: %s = ") + format + Twine("\n"));
     }
     
     static GlobalVariable *getConstString(Module *module, Twine name, Twine str) {
