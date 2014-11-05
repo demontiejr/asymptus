@@ -33,7 +33,8 @@ bool LoopInstrumentation::runOnFunction(Function &F) {
         BasicBlock *loopHeader = l->getHeader();
         
         std::string dbgInfo = getLineNumber(loopHeader->getFirstInsertionPt());
-        //Twine dbgInfo = moduleID + Twine("_") + Twine(loopLine);
+        std::replace(dbgInfo.begin(), dbgInfo.end(), '/', '.');
+        std::replace(dbgInfo.begin(), dbgInfo.end(), '-', '_');
         
         //Get or create a loop preheader
         BasicBlock *preHeader;
@@ -63,7 +64,7 @@ bool LoopInstrumentation::runOnFunction(Function &F) {
         }
         
         //Create trip counter
-        Twine varName = F.getName() + Twine(".loopCounter.") + Twine(counter++);
+        std::string varName = (F.getName() + Twine(".loopCounter.") + Twine(counter++)).str();
         Value *counter = createCounter(l, varName+Twine(".addr"), F);
         
         SmallVector<BasicBlock*, 4> exitBlocks;
@@ -71,7 +72,7 @@ bool LoopInstrumentation::runOnFunction(Function &F) {
         for (SmallVectorImpl<BasicBlock*>::iterator it = exitBlocks.begin(); it != exitBlocks.end(); it++) {
             BasicBlock *exBB = *it;
             IRBuilder<> builder(exBB->getFirstInsertionPt());
-            LoadInst* load = builder.CreateLoad(counter, varName);
+            LoadInst* load = builder.CreateLoad(counter, Twine(varName));
             createPrintfCall(F.getParent(), exBB->getFirstInsertionPt(), load, Twine(dbgInfo));
             changed = true;
         }
@@ -153,7 +154,7 @@ std::set<Value*> getLoopExitPredicates(Loop* L) {
 
 static void generateAdd(IRBuilder<> builder, AllocaInst* ptr, LLVMContext &ctx, int value) {
     LoadInst* load = builder.CreateLoad(ptr);
-    Value *inc = builder.CreateAdd(load, ConstantInt::get(Type::getInt32Ty(ctx), value));
+    Value *inc = builder.CreateAdd(load, ConstantInt::get(Type::getInt64Ty(ctx), value));
     builder.CreateStore(inc, ptr);
 }
 
@@ -162,10 +163,10 @@ Value *LoopInstrumentation::createCounter(Loop *L, Twine varName, Function &F) {
     
     LLVMContext& ctx = F.getParent()->getContext();
     
-    AllocaInst* counter = builder.CreateAlloca(Type::getInt32Ty(ctx), NULL, varName);
+    AllocaInst* counter = builder.CreateAlloca(Type::getInt64Ty(ctx), NULL, varName);
     
     //builder.SetInsertPoint(&(*F.getEntryBlock().rbegin()));
-    builder.CreateStore(ConstantInt::get(Type::getInt32Ty(ctx), 0), counter);
+    builder.CreateStore(ConstantInt::get(Type::getInt64Ty(ctx), 0), counter);
     
     recoursiveInc(L, counter, ctx);
     

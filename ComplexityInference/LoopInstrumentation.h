@@ -55,6 +55,9 @@ private:
         if (Ty->isFloatingPointTy()) {
             format = Twine("%f");
             formatTy = "Float";
+        } else if (Ty->isIntegerTy(64)) {
+            format = Twine("%ld");
+            formatTy = "Long";
         } else if (Ty->isIntegerTy()) {
             format = Twine("%d");
             formatTy = "Int";
