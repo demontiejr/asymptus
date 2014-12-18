@@ -1,11 +1,14 @@
 #include "LoopInstrumentation.h"
 
-#include "llvm/IR/IRBuilder.h"
+#include "llvm/DebugInfo.h"
 #include "llvm/Pass.h"
+#include "llvm/IR/IRBuilder.h"
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/Support/CFG.h"
 #include "llvm/Transforms/Utils/BasicBlockUtils.h"
-#include "llvm/DebugInfo.h"
+
+#include "llvm/Analysis/Dominators.h"
+#include "llvm/Analysis/PostDominators.h"
 
 #define END_NODE 9999
 
@@ -14,28 +17,72 @@ LoopInstrumentation::LoopInstrumentation() : FunctionPass(ID) {
 }
 
 void LoopInstrumentation::getAnalysisUsage(AnalysisUsage &AU) const{
-    AU.addRequired<functionDepGraph> ();
-    AU.addRequiredTransitive<LoopInfo> ();
+    AU.addRequired<functionDepGraph>();
+    AU.addRequiredTransitive<LoopInfoEx>();
+    AU.addRequired<DominatorTree>();
+    AU.addRequired<PostDominatorTree>();
 }
 
-bool LoopInstrumentation::runOnFunction(Function &F) {    
+unsigned getLine(Instruction *I) {
+    if (MDNode *N = I->getMetadata("dbg")) {
+        DILocation Loc(N);
+        return Loc.getLineNumber();
+    }
+    return 0;
+}
+
+std::vector<unsigned> getParentNodes(DomTreeNodeBase<BasicBlock>* node, LoopInfoEx& li) {
+    std::vector<unsigned> parentNodes;
+    DomTreeNodeBase<BasicBlock>* parent = node->getIDom();
+
+    while (parent) {
+        BasicBlock* b = parent->getBlock();
+        if (li.isLoopHeader(b)) {
+            parentNodes.push_back(getLine(b->getFirstInsertionPt()));
+        }
+        parent = parent->getIDom();
+    }
+    return parentNodes;
+}
+
+std::string getString(std::vector<unsigned> v) {
+    if (v.empty()) return "0";
+    std::stringstream result;
+    std::copy(v.begin(), v.end(), std::ostream_iterator<int>(result, ","));
+    std::string s = result.str();
+    return s.substr(0, s.length()-1);
+}
+
+bool LoopInstrumentation::runOnFunction(Function &F) {
     //Get the complete dependence graph
     functionDepGraph& DepGraph = getAnalysis<functionDepGraph> ();
     Graph* depGraph = DepGraph.depGraph;
     
-    LoopInfo& li = getAnalysis<LoopInfo>();
+    LoopInfoEx& li = getAnalysis<LoopInfoEx>();
+    DominatorTree& DT = getAnalysis<DominatorTree>();
+    PostDominatorTree& PDT = getAnalysis<PostDominatorTree>();
     
     bool changed = false;
     int counter = 0;
-    for (LoopInfo::iterator lit = li.begin(), lend = li.end(); lit != lend; lit++) {
+    for (LoopInfoEx::iterator lit = li.begin(), lend = li.end(); lit != lend; lit++) {
         Loop* l = *lit;
         
         BasicBlock *loopHeader = l->getHeader();
-        
-        std::string dbgInfo = getLineNumber(loopHeader->getFirstInsertionPt());
+        Loop* parentLoop = l->getParentLoop();
+        unsigned parentLine = parentLoop? getLine(parentLoop->getHeader()->getFirstInsertionPt()) : 0;
+
+        std::vector<unsigned> dominatedBy = getParentNodes(DT.getNode(loopHeader), li);
+        std::vector<unsigned> postdomBy = getParentNodes(PDT.getNode(loopHeader), li);
+
+        std::string dbgInfo = getDbgInfo(F, loopHeader->getFirstInsertionPt());
         std::replace(dbgInfo.begin(), dbgInfo.end(), '/', '.');
         std::replace(dbgInfo.begin(), dbgInfo.end(), '-', '_');
         
+        /*Instruction *firstInsertionPt = F.getEntryBlock().getFirstInsertionPt();
+        createPrintfCall(F.getParent(), firstInsertionPt, Twine("parent"), Twine(parentLine), Twine(dbgInfo));
+        createPrintfCall(F.getParent(), firstInsertionPt, Twine("dominated"), Twine(getString(dominatedBy)), Twine(dbgInfo));
+        createPrintfCall(F.getParent(), firstInsertionPt, Twine("postdominated"), Twine(getString(postdomBy)), Twine(dbgInfo));*/
+
         //Get or create a loop preheader
         BasicBlock *preHeader;
         
@@ -80,7 +127,7 @@ bool LoopInstrumentation::runOnFunction(Function &F) {
     return changed;
 }
 
-//Fix point algoritm to get the variables defined outside the loop
+//Fixed-point algoritm to get the variables defined outside the loop
 set<Value*> getLoopInputs(Loop *L, Graph *depGraph) {
     std::set<Value*> loopExitPredicates = getLoopExitPredicates(L);
     
@@ -165,10 +212,10 @@ Value *LoopInstrumentation::createCounter(Loop *L, Twine varName, Function &F) {
     
     AllocaInst* counter = builder.CreateAlloca(Type::getInt64Ty(ctx), NULL, varName);
     
-    //builder.SetInsertPoint(&(*F.getEntryBlock().rbegin()));
+    builder.SetInsertPoint(L->getLoopPreheader()->getFirstInsertionPt());
     builder.CreateStore(ConstantInt::get(Type::getInt64Ty(ctx), 0), counter);
     
-    recoursiveInc(L, counter, ctx);
+    increment(L, counter, ctx);
     
     return counter;
 }
@@ -204,7 +251,7 @@ int longestPath(std::map<long, std::vector<std::pair<long, int> > > graph, Basic
     return d[END_NODE];
 }
 
-void LoopInstrumentation::recoursiveInc(Loop *L, AllocaInst *ptr, LLVMContext& ctx) {
+void LoopInstrumentation::increment(Loop *L, AllocaInst *ptr, LLVMContext& ctx) {
     BasicBlock* header = L->getHeader();
     
     std::vector<Loop*> subLoops = L->getSubLoops();
@@ -263,11 +310,32 @@ void LoopInstrumentation::recoursiveInc(Loop *L, AllocaInst *ptr, LLVMContext& c
     
     IRBuilder<> builder(header->getFirstInsertionPt());
     generateAdd(builder, ptr, ctx, pathCost);
+}
+
+CallInst *LoopInstrumentation::createPrintfCall(Module *module, Instruction *insertPt, Twine name, Twine value, Twine dbg) {
+    LLVMContext& ctx = module->getContext();
+    IRBuilder<> builder(ctx);
+    builder.SetInsertPoint(insertPt);
     
-    for (std::vector<Loop*>::iterator li = subLoops.begin(); li != subLoops.end(); li++) {
-        Loop* innerLoop = *li;
-        recoursiveInc(innerLoop, ptr, ctx);
-    }
+    Constant *zero = Constant::getNullValue(IntegerType::getInt32Ty(ctx));
+    std::vector<llvm::Constant*> indices;
+    indices.push_back(zero);
+    indices.push_back(zero);
+    
+    GlobalVariable *varName = getConstString(module, name, name);
+    Constant *varName_ref = ConstantExpr::getGetElementPtr(varName, indices);
+
+    GlobalVariable *varValue = getConstString(module, value, value);
+    Constant *varValue_ref = ConstantExpr::getGetElementPtr(varValue, indices);
+    
+    GlobalVariable *dbgInfo = getConstString(module, dbg, dbg);
+    Constant *dbgInfo_ref = ConstantExpr::getGetElementPtr(dbgInfo, indices);
+
+    Constant *var_ref = ConstantExpr::getGetElementPtr(getFormat(module, Type::getVoidTy(ctx)), indices);
+    
+    CallInst *call = builder.CreateCall4(getPrintf(module), var_ref, dbgInfo_ref, varName_ref, varValue_ref, "printf");
+    
+    return call;
 }
 
 CallInst *LoopInstrumentation::createPrintfCall(Module *module, Instruction *insertPt, Value *param, Twine dbg) {
@@ -306,12 +374,12 @@ Function *LoopInstrumentation::getPrintf(Module *module) {
     return this->printf;
 }
 
-std::string LoopInstrumentation::getLineNumber(Instruction *I) {
+std::string LoopInstrumentation::getDbgInfo(Function &F, Instruction *I) {
     if (MDNode *N = I->getMetadata("dbg")) {
         DILocation Loc(N);
         Twine Line = Twine(Loc.getLineNumber());
         StringRef File = Loc.getFilename();
-        Twine result = File + Twine("_") + Line;
+        Twine result = File + Twine("_#") + F.getName() + Twine("#_") + Line;
         return result.str();
     }
     return "";

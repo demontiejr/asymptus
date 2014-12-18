@@ -4,8 +4,9 @@ import sys
 from collections import defaultdict
 from parse_file import *
 
-def write_to_file(file_name, lines):
+def write_to_file(file_name, var_name, lines):
     outfile = open(file_name, 'w')
+    outfile.write(var_name + '\n')
     outfile.write(str(len(lines)) + '\n')
     outfile.writelines(lines)
     outfile.close()
@@ -15,6 +16,7 @@ def write(content_map):
         lines = []
         count = 0
         current_line = ""
+        var_name = ""
         for value in content_map[k]:
             value = value.split("=")
             if len(value) < 2:
@@ -32,6 +34,8 @@ def write(content_map):
             else:
                 count += 1
                 current_line = value[1].strip()
+                if not var_name:
+                    var_name = value[0].strip()
 
         if not lines:
             continue
@@ -39,7 +43,7 @@ def write(content_map):
         if k.startswith('.'):
             k = k[1:len(k)]
 
-        write_to_file(k + ".csv", lines)
+        write_to_file(k + ".csv", var_name, lines)
 
 if __name__ == "__main__":
     if len(sys.argv) != 2:

@@ -18,6 +18,7 @@
 #include "llvm/Pass.h"
 
 #include "../util/DepGraph.h"
+#include "../util/LoopInfoEx.h"
 
 using namespace llvm;
 
@@ -37,13 +38,15 @@ private:
     
     Value *createCounter(Loop *L, Twine varName, Function &F);
     
-    void recoursiveInc(Loop *L, AllocaInst *ptr, LLVMContext& ctx);
-    
+    void increment(Loop *L, AllocaInst *ptr, LLVMContext& ctx);
+
+    CallInst *createPrintfCall(Module *module, Instruction *insertPoint, Twine name, Twine value, Twine dbg);    
+
     CallInst *createPrintfCall(Module *module, Instruction *insertPoint, Value *param, Twine dbg);
     
     Function *getPrintf(Module *module);
     
-    std::string getLineNumber(Instruction *I);
+    std::string getDbgInfo(Function &F, Instruction *I);
     
     static GlobalVariable *getFormat(Module *module, Type *Ty) {
         if (!Ty)
