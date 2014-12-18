@@ -18,6 +18,23 @@ def parse(content):
             current_file = None
     return result
 
+def parse_equations(equations):
+    result = {}
+    current_function = None
+    for line in equations:
+        if line.startswith("Function"):
+            if current_function:
+                raise Exception("Invalid file format")
+            current_function = line.split(' ')[1].strip()
+        else:
+            equation = line.strip()
+            if not current_function:
+                raise Exception("Invalid file format")
+            if equation:
+                result[current_function] = equation
+            current_function = None
+    return result
+
 def get_line(filename):
     content = filename.split("_")
     if not ".csv" in content[-1]:
@@ -35,21 +52,27 @@ def write(filename, content_map):
 
 
 if __name__ == "__main__":
-    if len(sys.argv) != 2:
-        print "Usage: python %s filename" % sys.argv[0]
+    if len(sys.argv) != 3:
+        print "Usage: python %s equations_filename filename" % sys.argv[0]
         exit()
     
-    filename = sys.argv[1]
+    eq_filename = sys.argv[1]
+    filename = sys.argv[2]
+
+    file = open(eq_filename, 'r')
+    equations = file.readlines()
+    file.close()
 
     file = open(filename, 'r')
     content = file.readlines()
     file.close()
 
-    equation = "(Line 8)*(Line 15)"
+    equations = parse_equations(equations)
     result = parse(content)
-    complexity = equation
-    for key in result:
-        complexity = complexity.replace("Line " + key, result[key])
+    for function in equations:
+        complexity = equations[function]
+        for key in result:
+            complexity = complexity.replace("Line " + key, result[key])
 
-    print "O(" + complexity + ")"
+        print "Complexity of function '%s': O(%s)" % (function, complexity)
 

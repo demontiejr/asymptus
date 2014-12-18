@@ -5,10 +5,8 @@
 //TODO: Intraprocedural Analysis
 
 
-
 using namespace llvm; 
 using namespace std; 
-
 
 namespace {
   struct LoopComplexity : public FunctionPass { 
@@ -44,40 +42,43 @@ namespace {
     }
 
 
-    void verifyInnerLoops(Loop *L1, BasicBlock *HeaderOuter, DominatorTree &DT, PostDominatorTree &PDT) {           
-      unsigned depth = L1->getLoopDepth();
-      int aux = 0 ; //Fix It      
-      Instruction *Instr;
-      BasicBlock *BBold;          
-      Instruction *InstHeaderOuter = HeaderOuter->getFirstInsertionPt();
-      for (Loop::iterator i = L1->begin(), e = L1->end(); i != e; ++i) {
-        Loop *L = *i;
-        BasicBlock *Header = L->getHeader();        
+    void verifyInnerLoops(std::vector<Loop*> subLoops, BasicBlock *HeaderOuter, DominatorTree &DT, PostDominatorTree &PDT) {
+        int aux = 0 ; //Fix It
+        Instruction *Instr;
+        BasicBlock *BBold;
+        //Instruction *InstHeaderOuter = HeaderOuter->getFirstInsertionPt();
+
+        if (subLoops.empty())
+            return;
+        
+        errs() << " * " << (subLoops.size() > 1? "(" : "");
+        for (std::vector<Loop*>::iterator li = subLoops.begin(); li != subLoops.end(); li++) {
+            Loop *L = *li;
+            BasicBlock *Header = L->getHeader();        
 
         //Verify Multipliable
         /*if (isMultipliable(InstHeaderOuter,HeaderOuter, Header, BodyOuter , DT, PDT)){        
           for(unsigned int i = 0; i<depth; ++i) errs() <<"--"; //Alinhar saidas
           errs() << getLineNumber(InstHeaderOuter) << " x" << getLineNumber(Header->getFirstInsertionPt()) << " at Depth " << L->getLoopDepth() <<"\n";                
-          verifyInnerLoops(L, Header, DT, PDT);              
-        }        */
-
-        for(unsigned int i = 0; i<depth; ++i) errs() <<"  "; //Alinhar saidas
-        errs() << getLineNumber(InstHeaderOuter) << " x" << getLineNumber(Header->getFirstInsertionPt()) << " at Depth " << L->getLoopDepth() <<"\n";                
-        verifyInnerLoops(L, Header, DT, PDT);              
-                
+          verifyInnerLoops(L, Header, DT, PDT);
+        }        */        
         
         //Verify Sumable
-        aux++;
-        if(aux==2){
-          if(DT.dominates(Instr,Header) && PDT.dominates(Header,BBold)){
-            for(unsigned int i = 0; i<depth; ++i) errs() <<"  "; //Pode tirar, é só pra alinhar saida
-            errs() << getLineNumber(BBold->getFirstInsertionPt()) << " +" << getLineNumber(Header->getFirstInsertionPt()) << " at Depth " << L->getLoopDepth() <<"\n";
-          }          
-          aux = 1;          
-        }          
-        BBold = Header;
-        Instr = BBold->getFirstInsertionPt();
-      }       
+            aux++;
+            if(aux==2){
+                if(DT.dominates(Instr,Header) && PDT.dominates(Header,BBold)){
+                    errs() << " + ";
+                }
+                aux = 1;
+            }
+            std::vector<Loop*> subLoops = L->getSubLoops();
+            errs() << (subLoops.size() > 1? "(" : "") << getLineNumber(Header->getFirstInsertionPt());
+            verifyInnerLoops(subLoops, Header, DT, PDT);
+            errs() << (subLoops.size() > 1? ")" : "");
+            BBold = Header;
+            Instr = BBold->getFirstInsertionPt();
+        }
+        errs() << (subLoops.size() > 1? ")" : "");
     } 
 
     virtual bool runOnFunction(Function &F) { 
@@ -88,21 +89,30 @@ namespace {
       int aux = 0 ; //Fix It      
       errs() << "Function " << F.getName() + "\n"; 
       Instruction *Instr;
-      BasicBlock *BBold;    
+      BasicBlock *BBold;
       for (LoopInfo::reverse_iterator i = LI.rbegin(), e = LI.rend(); i != e; ++i) {     
         Loop *L = *i;
-        BasicBlock *Header = L->getHeader();        
+        BasicBlock *Header = L->getHeader();
+        /*errs() << "(" << getLineNumber(Header->getFirstInsertionPt());
         verifyInnerLoops(L, Header, DT, PDT);
+        errs() << ")";*/
         aux++;
-          if(aux==2){
+        if(aux==2){
             if(DT.dominates(Instr,Header) && PDT.dominates(Header,BBold)){
-              errs() << getLineNumber(BBold->getFirstInsertionPt()) << " +" << getLineNumber(Header->getFirstInsertionPt()) << " at Depth " << L->getLoopDepth() <<"\n";
-            }            
-            aux = 1;            
-          }          
-          BBold = Header;
-          Instr = BBold->getFirstInsertionPt();
-      } 
+                errs() << " + ";
+            } else {
+                errs() << " @ ";
+            }
+            aux = 1;
+        }
+        std::vector<Loop*> subLoops = L->getSubLoops();
+        errs() << (subLoops.size() > 1? "(" : "") << getLineNumber(Header->getFirstInsertionPt());
+        verifyInnerLoops(subLoops, Header, DT, PDT);
+        errs() << (subLoops.size() > 1? ")" : "");
+        BBold = Header;
+        Instr = BBold->getFirstInsertionPt();
+      }
+      errs() << "\n";
       return(false);
     } 
   };
