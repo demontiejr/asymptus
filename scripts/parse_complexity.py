@@ -1,6 +1,8 @@
 import os
 import os.path
 import sys
+import pyparsing
+from collections import defaultdict
 
 TAG = "=== File: "
 
@@ -41,6 +43,60 @@ def get_line(filename):
         raise Exception("Invalid filename " + filename)
     return content[-1][:content[-1].find(".csv")]
 
+def simplify(complexity):
+    print "simplify(", complexity, ")"
+    thecontent = pyparsing.Word(pyparsing.alphanums) | '+' | '*' | '@'
+    parens = pyparsing.nestedExpr( '(', ')', content=thecontent)
+    eq = parens.parseString("(" + complexity + ")").asList()
+    return ' '.join(resolve(eq))
+    
+def resolve(eq):
+    print "resolve(", eq, ")"
+    if not eq:
+        return []
+    nested = get_nested_lists(eq)
+    for i,l in nested:
+        print "Nested:", nested
+        values = resolve(l)
+        eq[i:i+1] = values
+
+    while '*' in eq:
+        modify = []
+        for i in xrange(len(eq)):
+            if eq[i] == '*' and var(eq[i-1]) == var(eq[i+1]):
+                modify.append(i)
+
+        for i in modify:
+            eq[i-1:i+2] = [var(eq[i-1]) + '^' + str(exp(eq[i-1]) + exp(eq[i+1]))]
+
+    greatest = defaultdict(int)
+    for e in eq:
+        if e in ('+', '*', '@', '(', ')'):
+            continue
+        v = var(e)
+        degree = exp(e)
+        if degree > greatest[v]:
+            greatest[v] = degree
+
+    eq = []
+
+    for k,v in greatest.items():
+        eq.append(k + '^' + str(v))
+        eq.append('+')
+    eq.pop()
+    
+    return eq
+
+def var(value):
+    return value.split("^")[0]
+
+def exp(value):
+    split = value.split("^")
+    return int(split[1]) if len(split) == 2 else 1
+
+def get_nested_lists(outer_list):
+    return [(i, outer_list[i]) for i in xrange(len(outer_list)) if isinstance(outer_list[i], list)]
+
 def write(filename, content_map):
     outfile = open(filename, 'w')
     for k in content_map:
@@ -72,7 +128,9 @@ if __name__ == "__main__":
     for function in equations:
         complexity = equations[function]
         for key in result:
-            complexity = complexity.replace("Line " + key, result[key])
+            complexity = complexity.replace("Line" + key, result[key])
+
+        complexity = simplify(complexity)
 
         print "Complexity of function '%s': O(%s)" % (function, complexity)
 
