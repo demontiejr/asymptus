@@ -1,7 +1,6 @@
 import os
 import os.path
 import sys
-import pyparsing
 from collections import defaultdict
 
 TAG = "=== File: "
@@ -44,19 +43,29 @@ def get_line(filename):
     return content[-1][:content[-1].find(".csv")]
 
 def simplify(complexity):
-    print "simplify(", complexity, ")"
-    thecontent = pyparsing.Word(pyparsing.alphanums) | '+' | '*' | '@'
-    parens = pyparsing.nestedExpr( '(', ')', content=thecontent)
-    eq = parens.parseString("(" + complexity + ")").asList()
+    complexity = complexity.replace("(", "( ").replace(")", " )")
+    stack = []
+    eq = []
+    stack.append(eq)
+    for element in complexity.split(' '):
+        if element.strip() == "(":
+            new_l = []
+            stack.append(new_l)
+        elif element.strip() == ")":
+            if len(stack) < 2:
+                raise Exception("Invalid equation")
+            new_l = stack.pop()
+            stack[-1].append(new_l)
+        else:
+            stack[-1].append(element.strip())
+
     return ' '.join(resolve(eq))
     
 def resolve(eq):
-    print "resolve(", eq, ")"
     if not eq:
         return []
     nested = get_nested_lists(eq)
     for i,l in nested:
-        print "Nested:", nested
         values = resolve(l)
         eq[i:i+1] = values
 
@@ -81,7 +90,7 @@ def resolve(eq):
     eq = []
 
     for k,v in greatest.items():
-        eq.append(k + '^' + str(v))
+        eq.append(k + ('^' + str(v) if v > 1 else ''))
         eq.append('+')
     eq.pop()
     
