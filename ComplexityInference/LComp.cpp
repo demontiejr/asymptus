@@ -24,7 +24,7 @@ namespace {
       if (MDNode *N = I->getMetadata("dbg")) {
         DILocation Loc(N);
         Twine Line = Twine(Loc.getLineNumber());       
-        Twine result = Twine(" (Line ") + Line + Twine(")");
+        Twine result = Twine("Line") + Line;
         return result.str();
       }
       return "";
@@ -90,7 +90,7 @@ namespace {
       errs() << "Function " << F.getName() + "\n"; 
       Instruction *Instr;
       BasicBlock *BBold;
-      for (LoopInfo::reverse_iterator i = LI.rbegin(), e = LI.rend(); i != e; ++i) {     
+      for (LoopInfo::iterator i = LI.begin(), e = LI.end(); i != e; ++i) {     
         Loop *L = *i;
         BasicBlock *Header = L->getHeader();
         /*errs() << "(" << getLineNumber(Header->getFirstInsertionPt());
