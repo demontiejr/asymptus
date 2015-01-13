@@ -69,14 +69,20 @@ def resolve(eq):
         values = resolve(l)
         eq[i:i+1] = values
 
-    while '*' in eq:
-        modify = []
-        for i in xrange(len(eq)):
-            if eq[i] == '*' and var(eq[i-1]) == var(eq[i+1]):
-                modify.append(i)
+    modify = []
+    for i in xrange(len(eq)):
+        if eq[i] == '*' and var(eq[i-1]) == var(eq[i+1]):
+            modify.append(i)
 
-        for i in modify:
-            eq[i-1:i+2] = [var(eq[i-1]) + '^' + str(exp(eq[i-1]) + exp(eq[i+1]))]
+    new_eq = []
+    for i in xrange(len(eq)):
+        if (i+1 < len(eq) and i+1 in modify) or (i-1 >= 0 and i-1 in modify):
+            continue
+        if i in modify:
+            new_eq.append(var(eq[i-1]) + '^' + str(exp(eq[i-1]) + exp(eq[i+1])))
+        else:
+            new_eq.append(eq[i])
+    eq = new_eq
 
     greatest = defaultdict(int)
     for e in eq:
