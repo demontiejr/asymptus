@@ -107,7 +107,19 @@ bool LoopInstrumentation::runOnFunction(Function &F) {
         
         //Insert printf calls
         for (std::set<Value*>::iterator it = loopInputs.begin(); it != loopInputs.end(); it++) {
-            createPrintfCall(F.getParent(), lastInst, *it, Twine(dbgInfo));
+            Value* input = *it;
+            //Is inductive variable?
+            bool isIndVar = false;
+            Loop* loop = l;
+            while (loop->getParentLoop()) {
+                loop = loop->getParentLoop();
+                if (!loop->isLoopInvariant(input)) {
+                    isIndVar = true;
+                    break;
+                }
+            }
+            Twine dbg = isIndVar? Twine("<IV> ") + Twine(dbgInfo) : Twine(dbgInfo);
+            createPrintfCall(F.getParent(), lastInst, input, dbg);
         }
         
         //Create trip counter
