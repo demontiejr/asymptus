@@ -5,6 +5,150 @@ from collections import defaultdict
 
 TAG = "=== File: "
 
+class Element:
+    
+    def __init__(self, value):
+        self.value = value
+
+    def __str__(self):
+        return str(self.value)
+
+    def var(self):
+        return self.value.split("^")[0]
+
+    def exp(self):
+        split = self.value.split("^")
+        return int(split[1]) if len(split) == 2 else 1
+
+    def simplify(self):
+        return self
+
+    def __repr__(self):
+        return self.__str__()
+
+class Expression:
+
+    def __init__(self):
+        self.values = []
+        self.operator = ''
+
+    def add(self, value):
+        self.values.append(value)
+
+    def simplify(self):
+        for i in xrange(len(self.values)):
+            e = self.values[i].simplify()
+            if e:
+                self.values[i] = e
+            else:
+                self.values.pop(i)
+
+        return self
+
+    def __str__(self):
+        result = ""
+        for v in self.values:
+            result += str(v) + (' %s ' % self.operator)
+        result = result[:-3]
+        return "(%s)" % result if len(self.values) > 1 else result
+
+    def __repr__(self):
+        return self.__str__()
+
+class Sum(Expression):
+    def __init__(self):
+        Expression.__init__(self)
+        self.operator = '+'
+
+    def simplify(self):
+        Expression.simplify(self)
+        
+        if len(self.values) == 0:
+            return None
+        else:
+            new_values = []
+            greatest = defaultdict(int)
+            for v in self.values:
+                if isinstance(v, Element):
+                    var = v.var()
+                    exp = v.exp()
+                    if greatest[var] < exp:
+                        greatest[var] = exp
+                else:
+                    new_values.append(v)
+
+            for k,v in greatest.items():
+                new_values.append(Element(k + ('^' + str(v) if v > 1 else '')))
+                
+            self.values = new_values
+
+        if len(self.values) == 1:
+            return self.values[0]
+        return self
+
+class Mul(Expression):
+    def __init__(self):
+        Expression.__init__(self)
+        self.operator = '*'
+
+    def simplify(self):
+        def multiply(exps_map, element):
+            var = element.var()
+            exp = element.exp()
+            exps_map[var] += exp
+
+        Expression.simplify(self)
+
+        if len(self.values) == 0:
+            return None
+        else:
+            new_values = []
+            exps = defaultdict(int)
+            distributive = Sum()
+            for v in self.values:
+                if isinstance(v, Element):
+                    multiply(exps, v)
+                elif isinstance(v, Sum):
+                    if not distributive.values:
+                        for i in v.values:
+                            mul = Mul()
+                            mul.add(i)
+                            distributive.add(mul)
+                    else:
+                        tmp = []
+                        for i in distributive.values:
+                            for j in v.values:
+                                mul = Mul()
+                                mul.values = i.values[0:]
+                                mul.add(j)
+                                tmp.append(mul)
+                        distributive.values = tmp
+                else:
+                    for i in v.values:
+                        multiply(exps, i)
+            
+            for k,v in exps.items():
+                new_values.append(Element(k + ('^' + str(v) if v > 1 else '')))
+
+            self.values = new_values
+
+        if distributive.values:
+            if self.values:
+                tmp = []
+                for i in distributive.values:
+                    for j in self.values:
+                        mul = Mul()
+                        mul.values = i.values[0:]
+                        mul.add(j)
+                        tmp.append(mul)
+                distributive.values = tmp
+            return distributive.simplify()
+
+        if len(self.values) == 1:
+            return self.values[0] 
+        return self
+
+
 def parse(content):
     result = {}
     current_file = None
@@ -43,75 +187,37 @@ def get_line(filename):
     return content[-1][:content[-1].find(".csv")]
 
 def simplify(complexity):
+    if '@' in complexity:
+        return complexity
     complexity = complexity.replace("(", "( ").replace(")", " )")
+    eq = Sum()
     stack = []
-    eq = []
     stack.append(eq)
+    stack.append(Mul())
     for element in complexity.split(' '):
         if element.strip() == "(":
-            new_l = []
-            stack.append(new_l)
+            stack.append(Sum())
+            stack.append(Mul())
         elif element.strip() == ")":
             if len(stack) < 2:
                 raise Exception("Invalid equation")
-            new_l = stack.pop()
-            stack[-1].append(new_l)
-        else:
-            stack[-1].append(element.strip())
-
-    return ' '.join(resolve(eq))
-    
-def resolve(eq):
-    if not eq:
-        return []
-    nested = get_nested_lists(eq)
-    for i,l in nested:
-        values = resolve(l)
-        eq[i:i+1] = values
-
-    modify = []
-    for i in xrange(len(eq)):
-        if eq[i] == '*' and var(eq[i-1]) == var(eq[i+1]):
-            modify.append(i)
-
-    new_eq = []
-    for i in xrange(len(eq)):
-        if (i+1 < len(eq) and i+1 in modify) or (i-1 >= 0 and i-1 in modify):
+            mul_exp = stack.pop()
+            sum_exp = stack.pop()
+            sum_exp.add(mul_exp)
+            stack[-1].add(sum_exp)
+        elif element.strip() == "+":
+            stack[-2].add(stack.pop())
+            stack.append(Mul())
+        elif element.strip() == "*":
             continue
-        if i in modify:
-            new_eq.append(var(eq[i-1]) + '^' + str(exp(eq[i-1]) + exp(eq[i+1])))
         else:
-            new_eq.append(eq[i])
-    eq = new_eq
+            stack[-1].add(Element(element.strip()))
 
-    greatest = defaultdict(int)
-    for e in eq:
-        if e in ('+', '*', '@', '(', ')'):
-            continue
-        v = var(e)
-        degree = exp(e)
-        if degree > greatest[v]:
-            greatest[v] = degree
+    while len(stack) > 1:
+        stack[-2].add(stack.pop())
 
-    eq = []
-
-    for k,v in greatest.items():
-        eq.append(k + ('^' + str(v) if v > 1 else ''))
-        eq.append('+')
-    eq.pop()
+    return eq.simplify()
     
-    return eq
-
-def var(value):
-    return value.split("^")[0]
-
-def exp(value):
-    split = value.split("^")
-    return int(split[1]) if len(split) == 2 else 1
-
-def get_nested_lists(outer_list):
-    return [(i, outer_list[i]) for i in xrange(len(outer_list)) if isinstance(outer_list[i], list)]
-
 def write(filename, content_map):
     outfile = open(filename, 'w')
     for k in content_map:

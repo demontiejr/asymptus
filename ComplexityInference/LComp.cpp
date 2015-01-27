@@ -90,7 +90,7 @@ namespace {
       errs() << "Function " << F.getName() + "\n"; 
       Instruction *Instr;
       BasicBlock *BBold;
-      for (LoopInfo::iterator i = LI.begin(), e = LI.end(); i != e; ++i) {     
+      for (LoopInfo::reverse_iterator i = LI.rbegin(), e = LI.rend(); i != e; ++i) {     
         Loop *L = *i;
         BasicBlock *Header = L->getHeader();
         /*errs() << "(" << getLineNumber(Header->getFirstInsertionPt());
