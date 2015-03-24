@@ -82,8 +82,8 @@ bool LoopInstrumentation::runOnFunction(Function &F) {
         Loop* l = *lit;
         
         BasicBlock *loopHeader = l->getHeader();
-        ////Loop* parentLoop = l->getParentLoop(); //Nao utilizada
-        ////unsigned parentLine = parentLoop? getLine(parentLoop->getHeader()->getFirstInsertionPt()) : 0; // Não esta sendo utilizada
+        /*Loop* parentLoop = l->getParentLoop(); //Nao utilizada
+        unsigned parentLine = parentLoop? getLine(parentLoop->getHeader()->getFirstInsertionPt()) : 0; */
 
         std::vector<unsigned> dominatedBy = getParentNodes(DT.getNode(loopHeader), li);
         std::vector<unsigned> postdomBy = getParentNodes(PDT.getNode(loopHeader), li);
@@ -191,7 +191,10 @@ bool usesGEP(Value *V, Instruction *lastInst, Graph *depGraph, DominatorTree *DT
     return false;
 }
 
-bool hasGEP(Value *V, Instruction *lastInst, Graph *depGraph, DominatorTree *DT){ //// LIMPAR ESTA FUNCAO 
+/* Verify if the pointer can change in the loop. If it can change, we do not allow a 
+load  value that depends on this load to be a loop input */
+
+bool hasGEP(Value *V, Instruction *lastInst, Graph *depGraph, DominatorTree *DT){
     unsigned numUses = V->getNumUses();
     bool notDominates = false;
     std::set<GraphNode*> visitedNodes;
@@ -225,10 +228,10 @@ bool hasGEP(Value *V, Instruction *lastInst, Graph *depGraph, DominatorTree *DT)
 		    DEBUG(errs() << ((DT->dominates( gepInst, lastInst)) ? " - Dominates\n" : " - Does not dominates\n"));
                     errs().resetColor();
 		    if(! DT->dominates( gepInst, lastInst)) notDominates |= true; notDominates |= false ;
-                } else if (GEPOperator *GEPOp = dyn_cast<GEPOperator>(value)) { // Verificar pq || nao tava funcionando
+                } else if (GEPOperator *GEPOp = dyn_cast<GEPOperator>(value)) { 
                     DEBUG(errs().changeColor(raw_ostream::GREEN,false,true) << "Found : " << *GEPOp << "\n" );
                     errs().resetColor();
-                } else if (CastInst *Cast = dyn_cast<CastInst>(value)) { // Verificar pq || nao tava funcionando
+                } else if (CastInst *Cast = dyn_cast<CastInst>(value)) { 
                     DEBUG(errs().changeColor(raw_ostream::GREEN,false,true) << "Found : " << *Cast << "" );
 		    DEBUG(errs() << ((DT->dominates( Cast, lastInst)) ? " - Dominates\n" : " - Does not dominates\n"));
                     errs().resetColor();
@@ -556,14 +559,14 @@ CallInst *LoopInstrumentation::createPrintfCall(Module *module, Instruction *ins
 CallInst *LoopInstrumentation::createPrintfCall(Module *module, Instruction *insertPt, Value *param, Twine dbg) {
     LLVMContext& ctx = module->getContext();
 
-///  Estava dando problema pra imprimir valores float. Fui conferir num IR e os floats eram convertidos a double antes de imprimir. Apenas repliquei o processo
+    // Fixed-point. Correct the print of float values.
     if(param->getType()->isFloatTy()){
          Type *doubletype = Type::getDoubleTy(ctx);
 	 IRBuilder<> builder(insertPt);
          Value *doubleprt = builder.CreateFPExt(param, doubletype, param->getName());
          param = doubleprt;
     }
-///
+
 
     IRBuilder<> builder(ctx);
     builder.SetInsertPoint(insertPt);
