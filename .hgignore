@@ -1,0 +1,8 @@
+syntax: glob
+
+*.o
+*.d
+*.pyc
+*.*~
+
+./Debug+Asserts/*
