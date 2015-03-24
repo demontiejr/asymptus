@@ -16,12 +16,12 @@
 #include "llvm/IR/Instructions.h"
 #include "llvm/IR/Constants.h"
 #include "llvm/Pass.h"
+#include "llvm/IR/Type.h"
 
 #include "../util/DepGraph.h"
 #include "../util/LoopInfoEx.h"
 
 using namespace llvm;
-
 
 class LoopInstrumentation : public FunctionPass {
 public:
@@ -89,6 +89,9 @@ private:
 
 //Fix point algoritm to get the variables defined outside the loop
 set<Value*> getLoopInputs(Loop *L, Graph *depGraph);
+
+bool hasGEP(Value *V, Instruction *I, Graph *depGraph, DominatorTree *DT);
+bool usesGEP(Value *V, Instruction *,Graph *depGraph, DominatorTree *DT);
 
 //Get the list of values that control the loop exit
 std::set<Value*> getLoopExitPredicates(Loop* L);
