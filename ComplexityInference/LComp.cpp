@@ -2,9 +2,10 @@
 #include "llvm/Support/CommandLine.h"
 
 static cl::opt<bool> usenames("use-names", cl::desc("Use names"));
+static cl::opt<bool> send2file("toFile", cl::desc("toFile"));
+cl::opt<string> OutputFilename("eqname", cl::desc("Specify output filename"), cl::value_desc("filename"));
 
-
-//TODO: Intraprocedural Analysis
+//Fix the technique to get the filename.
 
 #undef  DEBUG_TYPE
 #define DEBUG_TYPE "lcomp"
@@ -37,8 +38,8 @@ bool LoopComplexity::runOnFunction(Function &F) {
 
   //clear the stringstream when pass run in other function
   strclear();
-
-  errs() << "Function " << F.getName() + "\n";
+  
+  addstr("\nFunction " + F.getName().str() + "\n");
 
   Instruction *Instr;
   BasicBlock *BBold;
@@ -53,17 +54,27 @@ bool LoopComplexity::runOnFunction(Function &F) {
 
     BasicBlock *Header = L->getHeader();
     aux++;
-    
+
+    if(loopInputs.size() > 1)  first++;
+    Value *secIn = *first;
+
+    if(loopInputs.size() > 1)
     if(loopInputs.size() != 0){
       if ((isa<ConstantInt>(input) || isa<ConstantFP>(input))
         && loopInputs.size() == 1){
         isConstant = true;
       }else if (LoadInst *load = dyn_cast<LoadInst>(input)) {
         ptr = load->getPointerOperand();
+        input->setName(ptr->getName() + "..");
         isLoad=true;
+      }else if(loopInputs.size() > 1){
+        if (LoadInst *load = dyn_cast<LoadInst>(secIn)) {
+          secIn->setName(load->getPointerOperand()->getName() + "..");
+        }
       }
     }
 
+   
     if(aux==2){
       if(DT.dominates(Instr,Header) && PDT.dominates(Header,BBold) && ! isConstant){          
         addstr(" + ");
@@ -76,7 +87,9 @@ bool LoopComplexity::runOnFunction(Function &F) {
     std::vector<Loop*> subLoops = L->getSubLoops();	    
 	    
     if(! isConstant){              
-      string varName = ((loopInputs.size() == 0)? getLineNumber(Header->getFirstInsertionPt()) : (isLoad? cleanName(ptr->getName()) : cleanName(input->getName())) );
+      string varName = ((loopInputs.size() == 0)? getLineNumber(Header->getFirstInsertionPt()) : 
+        (loopInputs.size() > 1)? "diff[" + cleanName(input->getName()) + "," + cleanName(secIn->getName()) + "]" : cleanName(input->getName()));
+
       string loopID = (usenames? varName : getLineNumber(Header->getFirstInsertionPt()));
       addstr(loopID);
     }
@@ -89,24 +102,24 @@ bool LoopComplexity::runOnFunction(Function &F) {
    prevConstant = isConstant;
   }
 
-      //limpador
 
-  string eq = getstr();
-  string result = " ";
-  string temp = ".";
-  while(result != temp){
-    temp = result;
-    result = avaliate(eq);
-   eq = result;
-  }
+  /*Cleaner. The final expression may have wrong sentences such as Line233 + 
+  That may occurs because we are not printing loops O(1) in the expression.
+  */
+  verifystr();
+  
 
-  errs() << eq << "\n";
+
+  send2file ? toFile(OutputFilename) : dumpstr();
+  
+
+  
   return(false);
 }
 
-  //Verify if the outer loop's header dominates and postdominates the inner loop's header.
-  //Verify if the inner loop's header postdominates the outer loop's body 
-  //Veridy if the outer loop's header dominates and postdominates its own body    
+
+
+/*Verify some conditions that allow us multiply loops*/
 bool LoopComplexity::isMultipliable(Instruction *InstHeaderOuter, BasicBlock *HeaderOuter, BasicBlock *Header, BasicBlock *BodyOuter, DominatorTree &DT, PostDominatorTree &PDT){       
   if((DT.dominates(InstHeaderOuter,Header)) && (PDT.dominates(HeaderOuter,Header)))
     if(PDT.dominates(Header,BodyOuter) && (DT.dominates(InstHeaderOuter,BodyOuter)) && (PDT.dominates(HeaderOuter,BodyOuter)))
@@ -116,7 +129,7 @@ bool LoopComplexity::isMultipliable(Instruction *InstHeaderOuter, BasicBlock *He
 
 
 void LoopComplexity::verifyInnerLoops(std::vector<Loop*> subLoops, BasicBlock *HeaderOuter, DominatorTree &DT, PostDominatorTree &PDT, Graph *depGraph, bool isParentConstant=false) {
-  int aux = 0 ; //Fix It
+  int aux = 0 ;
   Instruction *Instr;
   BasicBlock *BBold;
   bool isConstant = false;
@@ -139,25 +152,40 @@ void LoopComplexity::verifyInnerLoops(std::vector<Loop*> subLoops, BasicBlock *H
     std::set<Value*>::iterator first = loopInputs.begin();
     Value *input = *first;
 
+    if(loopInputs.size() > 1)  first++;
+    Value *secIn = *first;
+
+    if(loopInputs.size() > 1)
     if(loopInputs.size() != 0){
       if ((isa<ConstantInt>(input) || isa<ConstantFP>(input))
         && loopInputs.size() == 1){
         isConstant = true;
       }else if (LoadInst *load = dyn_cast<LoadInst>(input)) {
         ptr = load->getPointerOperand();
+        input->setName(ptr->getName() + "..");
         isLoad=true;
+      }else if(loopInputs.size() > 1){
+        if (LoadInst *load = dyn_cast<LoadInst>(secIn)) {
+          secIn->setName(load->getPointerOperand()->getName() + "..");
+        }
       }
     }
-      
+
 
     // =========== debug =============== //
-    DEBUG(errs() << "->Num Total Inputs: " << loopInputs.size());
-    for (std::set<Value*>::iterator it = loopInputs.begin(); it != loopInputs.end(); it++) {
-      Value *val = *it;
-      DEBUG(errs() << "\n    " <<  val->getName());
+    DEBUG(errs() << "\n->Num Total Inputs: " << loopInputs.size());
+    if(loopInputs.size() > 1){            
+      if(isLoad)
+        DEBUG(errs() << "\n    " <<  ptr->getName());
+      else
+        DEBUG(errs() << "\n    " <<  input->getName());
+
+      DEBUG(errs() << "\n    " <<  secIn->getName());
+            
+      DEBUG(errs() << "\n\n");
     }
-    DEBUG(errs() << "\n\n");
     // ================================= //
+
 
     //Verify Multipliable
     /*if (isMultipliable(InstHeaderOuter,HeaderOuter, Header, BodyOuter , DT, PDT)){                
@@ -180,9 +208,11 @@ void LoopComplexity::verifyInnerLoops(std::vector<Loop*> subLoops, BasicBlock *H
 
     std::vector<Loop*> _subLoops = L->getSubLoops();
     if(! isConstant){              
-      string varName = ((loopInputs.size() == 0)? getLineNumber(Header->getFirstInsertionPt()) : (isLoad? cleanName(ptr->getName()) : cleanName(input->getName())) );
+      string varName = ((loopInputs.size() == 0)? getLineNumber(Header->getFirstInsertionPt()) : 
+        (loopInputs.size() > 1)? "diff[" + cleanName(input->getName()) + "," + cleanName(secIn->getName()) + "]" : cleanName(input->getName()));
       string loopID = (usenames? varName : getLineNumber(Header->getFirstInsertionPt()));
-      addstr(loopID); //addstr(input->getName().str()); // Nome da var
+
+      addstr(loopID);
     }
     verifyInnerLoops(_subLoops, Header, DT, PDT,depGraph, isConstant);
 
@@ -209,8 +239,7 @@ string avaliate(string expr){
          ++prox;
       }
       succ = *prox;
-
-      //cout << "[" << *it << "," << prev << "," << prevprev << "," << succ << "]\n";
+      
       if(*it == '+' && prev == "+" ){ //Remover sequencia de iguais
         expr.erase(i,1);
       }else if(*it == '*' && prev == "*" ){
