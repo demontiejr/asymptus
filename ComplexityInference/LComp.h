@@ -1,11 +1,18 @@
 #include "llvm/Analysis/LoopPass.h"  
 #include "llvm/DebugInfo.h"
 #include "llvm/Analysis/PostDominators.h"
+#include "llvm/IR/BasicBlock.h"
+#include "llvm/IR/Instruction.h"
 #include "../util/DepGraph.h"
 #include "../util/LoopInfoEx.h"
+#include "LoopInstrumentation.h"
 #include <string>
 #include <fstream>
-#include "LoopInstrumentation.h"
+#include <sstream>
+
+
+
+
 
 #ifndef _lcomp_h
 #define _lcomp_h
@@ -14,14 +21,15 @@ using std::cout;
 using std::cin;
 using std::string;
 
-/*
-* todo: passar pra privado depois
-*/
+string avaliate(string expr);
+string getLineNumber(Instruction *I);
+string cleanName(string name);
 
 
 class LoopComplexity : public FunctionPass {
 private:
   std::stringstream expr;
+  string filename;
 
   void verifyInnerLoops(std::vector<Loop*> subLoops, BasicBlock *HeaderOuter, DominatorTree &DT, PostDominatorTree &PDT, Graph *depGraph, bool isParentConstant);
 
@@ -43,9 +51,40 @@ private:
     return expr.str();
   }
 
-  void strclear(){
+  void strclear(){    
+    expr << "";
     expr.str(std::string());
     expr.clear();
+  }
+
+  void verifystr(){
+    string eq = getstr();
+    string result = " ";
+    string temp = ".";
+    while(result != temp){
+      temp = result;
+      result = avaliate(eq);
+      eq = result;
+    }
+    strclear();
+    addstr(eq);
+  }
+
+  void toFile(string OutputFilename){        
+    std::ofstream file;
+    string nameout = OutputFilename + ".LCompOut";
+    file.open(nameout.c_str(),ios_base::app);
+    file << expr.str();
+    file.close();
+  }
+
+
+  void setFileName(Function &F){
+    Instruction *I = F.getEntryBlock().getFirstInsertionPt();
+    if (MDNode *N = I->getMetadata("dbg")) {
+      DILocation Loc(N);
+      filename = Loc.getFilename();            
+    }
   }
 
 public:
@@ -57,8 +96,5 @@ public:
 };
 
 
-string avaliate(string expr);
-string getLineNumber(Instruction *I);
-string cleanName(string name);
 
 #endif
