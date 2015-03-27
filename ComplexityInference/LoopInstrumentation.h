@@ -42,7 +42,7 @@ private:
 
     CallInst *createPrintfCall(Module *module, Instruction *insertPoint, Twine name, Twine value, Twine dbg);    
 
-    CallInst *createPrintfCall(Module *module, Instruction *insertPoint, Value *param, Twine dbg);
+    CallInst *createPrintfCall(Module *module, Instruction *insertPoint, Value *param, Twine dbg, bool isIndVar=false);
     
     Function *getPrintf(Module *module);
     
