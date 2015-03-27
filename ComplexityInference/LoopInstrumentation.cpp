@@ -152,8 +152,7 @@ bool LoopInstrumentation::runOnFunction(Function &F) {
 	        }
 
         
-            Twine dbg = isIndVar? Twine("<IV> ") + Twine(dbgInfo) : Twine(dbgInfo);
-            createPrintfCall(F.getParent(), lastInst, input, dbg);
+            createPrintfCall(F.getParent(), lastInst, input, dbgInfo, isIndVar);
         }
 
         //Create trip counter
@@ -556,7 +555,7 @@ CallInst *LoopInstrumentation::createPrintfCall(Module *module, Instruction *ins
     return call;
 }
 
-CallInst *LoopInstrumentation::createPrintfCall(Module *module, Instruction *insertPt, Value *param, Twine dbg) {
+CallInst *LoopInstrumentation::createPrintfCall(Module *module, Instruction *insertPt, Value *param, Twine dbg, bool isIndVar) {
     LLVMContext& ctx = module->getContext();
 
     // Fixed-point. Correct the print of float values.
@@ -581,7 +580,8 @@ CallInst *LoopInstrumentation::createPrintfCall(Module *module, Instruction *ins
     GlobalVariable *varName = getConstString(module, param->getName(), param->getName());
     Constant *varName_ref = ConstantExpr::getGetElementPtr(varName, indices);
     
-    GlobalVariable *dbgInfo = getConstString(module, dbg, dbg);
+    Twine dbgValue = isIndVar? Twine("<IV> ") + Twine(dbg) : Twine(dbg);
+    GlobalVariable *dbgInfo = getConstString(module, dbg, dbgValue);
     Constant *dbgInfo_ref = ConstantExpr::getGetElementPtr(dbgInfo, indices);
     
     CallInst *call = builder.CreateCall4(getPrintf(module), var_ref, dbgInfo_ref, varName_ref, param, "printf");
