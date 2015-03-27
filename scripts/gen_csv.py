@@ -66,6 +66,11 @@ def to_number(value):
     else:
         return i if i == f else f
 
+def readfile(filepath): 
+    with open(filepath, 'r') as f: 
+        for line in f:
+            yield line
+
 if __name__ == "__main__":
     if len(sys.argv) != 2:
         print "Usage: python %s filename" % sys.argv[0]
@@ -74,9 +79,10 @@ if __name__ == "__main__":
     filename = sys.argv[1]
 
     print "Reading", filename
-    file = open(filename, 'r')
-    content = file.readlines()
-    file.close()
+    #file = open(filename, 'r')
+    #content = file.readlines()
+    #file.close()
+    content = readfile(filename)
 
     result = parse_to_values(content)
     write(result)
