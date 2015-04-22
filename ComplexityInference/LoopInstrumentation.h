@@ -38,6 +38,8 @@ private:
     
     Value *createCounter(Loop *L, Twine varName, Function &F);
     
+    Value *createCounter2(Loop *L, Twine varName, Function &F);
+    
     void increment(Loop *L, AllocaInst *ptr, LLVMContext& ctx);
 
     CallInst *createPrintfCall(Module *module, Instruction *insertPoint, Twine name, Twine value, Twine dbg);    
