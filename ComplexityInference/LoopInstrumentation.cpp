@@ -26,7 +26,6 @@ void LoopInstrumentation::getAnalysisUsage(AnalysisUsage &AU) const{
     AU.addRequired<functionDepGraph>();
     AU.addRequiredTransitive<LoopInfoEx>();
     AU.addRequired<DominatorTree>();
-    AU.addRequired<PostDominatorTree>();
 }
 
 unsigned getLine(Instruction *I) {
@@ -74,7 +73,6 @@ bool LoopInstrumentation::runOnFunction(Function &F) {
     
     LoopInfoEx& li = getAnalysis<LoopInfoEx>();
     DominatorTree& DT = getAnalysis<DominatorTree>();
-    PostDominatorTree& PDT = getAnalysis<PostDominatorTree>();
     
     bool changed = false;
     int counter = 0;
@@ -82,21 +80,11 @@ bool LoopInstrumentation::runOnFunction(Function &F) {
         Loop* l = *lit;
         
         BasicBlock *loopHeader = l->getHeader();
-        /*Loop* parentLoop = l->getParentLoop(); //Nao utilizada
-        unsigned parentLine = parentLoop? getLine(parentLoop->getHeader()->getFirstInsertionPt()) : 0; */
-
-        std::vector<unsigned> dominatedBy = getParentNodes(DT.getNode(loopHeader), li);
-        std::vector<unsigned> postdomBy = getParentNodes(PDT.getNode(loopHeader), li);
 
         std::string dbgInfo = getDbgInfo(F, loopHeader->getFirstInsertionPt());
         std::replace(dbgInfo.begin(), dbgInfo.end(), '/', '.');
         std::replace(dbgInfo.begin(), dbgInfo.end(), '-', '_');
         
-        /*Instruction *firstInsertionPt = F.getEntryBlock().getFirstInsertionPt();
-        createPrintfCall(F.getParent(), firstInsertionPt, Twine("parent"), Twine(parentLine), Twine(dbgInfo));
-        createPrintfCall(F.getParent(), firstInsertionPt, Twine("dominated"), Twine(getString(dominatedBy)), Twine(dbgInfo));
-        createPrintfCall(F.getParent(), firstInsertionPt, Twine("postdominated"), Twine(getString(postdomBy)), Twine(dbgInfo));*/
-
         //Get or create a loop preheader
         BasicBlock *preHeader;
         
@@ -337,7 +325,6 @@ void checkOperands(Value *value){
 //Fixed-point algoritm to get the variables defined outside the loop
 set<Value*> getLoopInputs(Loop *L, Graph *depGraph) {
     std::set<Value*> loopExitPredicates = getLoopExitPredicates(L);
-    BasicBlock *header = L->getHeader();
     
     std::set<GraphNode*> visitedNodes;
     std::set<GraphNode*> workList;
@@ -375,7 +362,7 @@ set<Value*> getLoopInputs(Loop *L, Graph *depGraph) {
                 continue;
 
             if (L->isLoopInvariant(value) || isa<LoadInst>(value)) {
-                if (isa<BinaryOperator>(value)){	               
+                if (isa<BinaryOperator>(value)){ 
                     checkOperands(value);
                     loopInputs.insert(value);
                 }else if(isa<CallInst>(value)){
