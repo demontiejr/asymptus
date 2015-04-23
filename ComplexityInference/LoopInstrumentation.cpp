@@ -146,6 +146,7 @@ bool LoopInstrumentation::runOnFunction(Function &F) {
         //Create trip counter
         std::string varName = (F.getName() + Twine(".loopCounter.") + Twine(counter++)).str();
         Value *counter = createCounter(l, varName+Twine(".addr"), F);
+        Value *counter2 = createCounter2(l, varName+Twine("2.addr"), F);
 
         SmallVector<BasicBlock*, 4> exitBlocks;
         l->getExitBlocks(exitBlocks);
@@ -153,7 +154,9 @@ bool LoopInstrumentation::runOnFunction(Function &F) {
             BasicBlock *exBB = *it;
             IRBuilder<> builder(exBB->getFirstInsertionPt());
             LoadInst* load = builder.CreateLoad(counter, Twine(varName));
+            LoadInst* load2 = builder.CreateLoad(counter2, Twine(varName));
             createPrintfCall(F.getParent(), exBB->getFirstInsertionPt(), load, Twine(dbgInfo));
+            createPrintfCall(F.getParent(), exBB->getFirstInsertionPt(), load2, Twine(dbgInfo));
             changed = true;
         }
     }
@@ -421,6 +424,31 @@ Value *LoopInstrumentation::createCounter(Loop *L, Twine varName, Function &F) {
     
     increment(L, counter, ctx);
     
+    return counter;
+}
+
+Value *LoopInstrumentation::createCounter2(Loop *L, Twine varName, Function &F) {
+    IRBuilder<> builder(F.getEntryBlock().getFirstInsertionPt());
+    
+    LLVMContext& ctx = F.getParent()->getContext();
+    
+    AllocaInst* counter = builder.CreateAlloca(Type::getInt64Ty(ctx), NULL, varName);
+    
+    //builder.SetInsertPoint(&(*F.getEntryBlock().rbegin()));
+    builder.CreateStore(ConstantInt::get(Type::getInt64Ty(ctx), 0), counter);
+    
+    BasicBlock *loopHeader = L->getHeader();
+    builder.SetInsertPoint(loopHeader->getFirstInsertionPt());
+    generateAdd(builder, counter, ctx, 1);
+    
+    //Add inc instruction for blocks
+    std::vector<BasicBlock*> blocks = L->getBlocks();
+    for (std::vector<BasicBlock*>::iterator i = blocks.begin(); i != blocks.end(); i++) {
+        BasicBlock* BB = *i;
+        int nInst = BB->getInstList().size();
+        builder.SetInsertPoint(BB->getFirstInsertionPt());
+        generateAdd(builder, counter, ctx, nInst);
+    }
     return counter;
 }
 
