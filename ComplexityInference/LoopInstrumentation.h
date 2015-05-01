@@ -32,7 +32,7 @@ public:
     void getAnalysisUsage(AnalysisUsage &AU) const;
     
     virtual bool runOnFunction(Function &F);
-    
+
 private:
     Function *printf;
     
@@ -80,7 +80,7 @@ private:
         for (int i=0; i < nameStr.size(); i++) {
             if (nameStr[i] == '.' || nameStr[i] == '_')
                 continue;
-            if (nameStr[i] < 65 || (nameStr[i] > 90 && nameStr[i] < 97) || nameStr[i] > 122)
+            if (nameStr[i] < 48 || (nameStr[i] > 57 && nameStr[i] < 65) || (nameStr[i] > 90 && nameStr[i] < 97) || nameStr[i] > 122)
                 nameStr[i] = '_';
         }
         /*std::replace(nameStr.begin(), nameStr.end(), '#', '_');
