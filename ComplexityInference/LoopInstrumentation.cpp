@@ -26,7 +26,6 @@ void LoopInstrumentation::getAnalysisUsage(AnalysisUsage &AU) const{
     AU.addRequired<functionDepGraph>();
     AU.addRequiredTransitive<LoopInfoEx>();
     AU.addRequired<DominatorTree>();
-    AU.addRequired<PostDominatorTree>();
 }
 
 unsigned getLine(Instruction *I) {
@@ -74,7 +73,6 @@ bool LoopInstrumentation::runOnFunction(Function &F) {
     
     LoopInfoEx& li = getAnalysis<LoopInfoEx>();
     DominatorTree& DT = getAnalysis<DominatorTree>();
-    PostDominatorTree& PDT = getAnalysis<PostDominatorTree>();
     
     bool changed = false;
     int counter = 0;
@@ -82,21 +80,11 @@ bool LoopInstrumentation::runOnFunction(Function &F) {
         Loop* l = *lit;
         
         BasicBlock *loopHeader = l->getHeader();
-        /*Loop* parentLoop = l->getParentLoop(); //Nao utilizada
-        unsigned parentLine = parentLoop? getLine(parentLoop->getHeader()->getFirstInsertionPt()) : 0; */
-
-        std::vector<unsigned> dominatedBy = getParentNodes(DT.getNode(loopHeader), li);
-        std::vector<unsigned> postdomBy = getParentNodes(PDT.getNode(loopHeader), li);
 
         std::string dbgInfo = getDbgInfo(F, loopHeader->getFirstInsertionPt());
         std::replace(dbgInfo.begin(), dbgInfo.end(), '/', '.');
         std::replace(dbgInfo.begin(), dbgInfo.end(), '-', '_');
         
-        /*Instruction *firstInsertionPt = F.getEntryBlock().getFirstInsertionPt();
-        createPrintfCall(F.getParent(), firstInsertionPt, Twine("parent"), Twine(parentLine), Twine(dbgInfo));
-        createPrintfCall(F.getParent(), firstInsertionPt, Twine("dominated"), Twine(getString(dominatedBy)), Twine(dbgInfo));
-        createPrintfCall(F.getParent(), firstInsertionPt, Twine("postdominated"), Twine(getString(postdomBy)), Twine(dbgInfo));*/
-
         //Get or create a loop preheader
         BasicBlock *preHeader;
         
@@ -158,7 +146,6 @@ bool LoopInstrumentation::runOnFunction(Function &F) {
         //Create trip counter
         std::string varName = (F.getName() + Twine(".loopCounter.") + Twine(counter++)).str();
         Value *counter = createCounter(l, varName+Twine(".addr"), F);
-        Value *counter2 = createCounter2(l, varName+Twine("2.addr"), F);
 
         SmallVector<BasicBlock*, 4> exitBlocks;
         l->getExitBlocks(exitBlocks);
@@ -166,9 +153,7 @@ bool LoopInstrumentation::runOnFunction(Function &F) {
             BasicBlock *exBB = *it;
             IRBuilder<> builder(exBB->getFirstInsertionPt());
             LoadInst* load = builder.CreateLoad(counter, Twine(varName));
-            LoadInst* load2 = builder.CreateLoad(counter2, Twine(varName));
             createPrintfCall(F.getParent(), exBB->getFirstInsertionPt(), load, Twine(dbgInfo));
-            createPrintfCall(F.getParent(), exBB->getFirstInsertionPt(), load2, Twine(dbgInfo));
             changed = true;
         }
     }
@@ -340,7 +325,6 @@ void checkOperands(Value *value){
 //Fixed-point algoritm to get the variables defined outside the loop
 set<Value*> getLoopInputs(Loop *L, Graph *depGraph) {
     std::set<Value*> loopExitPredicates = getLoopExitPredicates(L);
-    BasicBlock *header = L->getHeader();
     
     std::set<GraphNode*> visitedNodes;
     std::set<GraphNode*> workList;
@@ -378,7 +362,7 @@ set<Value*> getLoopInputs(Loop *L, Graph *depGraph) {
                 continue;
 
             if (L->isLoopInvariant(value) || isa<LoadInst>(value)) {
-                if (isa<BinaryOperator>(value)){	               
+                if (isa<BinaryOperator>(value)){ 
                     checkOperands(value);
                     loopInputs.insert(value);
                 }else if(isa<CallInst>(value)){
@@ -440,31 +424,6 @@ Value *LoopInstrumentation::createCounter(Loop *L, Twine varName, Function &F) {
     return counter;
 }
 
-Value *LoopInstrumentation::createCounter2(Loop *L, Twine varName, Function &F) {
-    IRBuilder<> builder(F.getEntryBlock().getFirstInsertionPt());
-    
-    LLVMContext& ctx = F.getParent()->getContext();
-    
-    AllocaInst* counter = builder.CreateAlloca(Type::getInt64Ty(ctx), NULL, varName);
-    
-    //builder.SetInsertPoint(&(*F.getEntryBlock().rbegin()));
-    builder.CreateStore(ConstantInt::get(Type::getInt64Ty(ctx), 0), counter);
-    
-    BasicBlock *loopHeader = L->getHeader();
-    builder.SetInsertPoint(loopHeader->getFirstInsertionPt());
-    generateAdd(builder, counter, ctx, 1);
-    
-    //Add inc instruction for blocks
-    std::vector<BasicBlock*> blocks = L->getBlocks();
-    for (std::vector<BasicBlock*>::iterator i = blocks.begin(); i != blocks.end(); i++) {
-        BasicBlock* BB = *i;
-        int nInst = BB->getInstList().size();
-        builder.SetInsertPoint(BB->getFirstInsertionPt());
-        generateAdd(builder, counter, ctx, nInst);
-    }
-    return counter;
-}
-
 // bellman-ford
 int longestPath(std::map<long, std::vector<std::pair<long, int> > > graph, BasicBlock* start) {
     std::map<long, int> d;
@@ -509,11 +468,12 @@ void LoopInstrumentation::increment(Loop *L, AllocaInst *ptr, LLVMContext& ctx) 
     for (std::vector<BasicBlock*>::iterator i = blocks.begin(); i != blocks.end(); i++) {
         BasicBlock* BB = *i;
         
-        int isInnerBlock = false;
+        bool isInnerBlock = false;
         for (std::vector<Loop*>::iterator li = subLoops.begin(); li != subLoops.end(); li++) {
             Loop* innerLoop = *li;
             if (innerLoop->contains(BB)) {
                 isInnerBlock = true;
+                break;
             }
         }
         
@@ -526,6 +486,7 @@ void LoopInstrumentation::increment(Loop *L, AllocaInst *ptr, LLVMContext& ctx) 
         // count instructions
         int nInst = BB->getInstList().size();
         // get successors
+
         for (succ_iterator PI = succ_begin(BB), E = succ_end(BB); PI != E; ++PI) {
             BasicBlock* succ = *PI;
             
@@ -545,7 +506,7 @@ void LoopInstrumentation::increment(Loop *L, AllocaInst *ptr, LLVMContext& ctx) 
                     }
                 }
             }
-            
+
             // add to the graph
             graph[(long)BB].push_back(std::pair<long, int>(succAddr, nInst));
         }
