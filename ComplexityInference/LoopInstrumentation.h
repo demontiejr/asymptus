@@ -32,7 +32,7 @@ public:
     void getAnalysisUsage(AnalysisUsage &AU) const;
     
     virtual bool runOnFunction(Function &F);
-    
+
 private:
     Function *printf;
     
@@ -76,14 +76,29 @@ private:
     
     static GlobalVariable *getConstString(Module *module, Twine name, Twine str) {
         Twine gvName = name + Twine(".str");
-        if (GlobalVariable *gv = module->getNamedGlobal(gvName.str()))
+        std::string nameStr = gvName.str();
+        for (int i=0; i < nameStr.size(); i++) {
+            if (nameStr[i] == '.' || nameStr[i] == '_')
+                continue;
+            if (nameStr[i] < 48 || (nameStr[i] > 57 && nameStr[i] < 65) || (nameStr[i] > 90 && nameStr[i] < 97) || nameStr[i] > 122)
+                nameStr[i] = '_';
+        }
+        /*std::replace(nameStr.begin(), nameStr.end(), '#', '_');
+        std::replace(nameStr.begin(), nameStr.end(), ' ', '_');
+        std::replace(nameStr.begin(), nameStr.end(), '[', '_');
+        std::replace(nameStr.begin(), nameStr.end(), ']', '_');
+        std::replace(nameStr.begin(), nameStr.end(), ' ', '_');
+        std::replace(nameStr.begin(), nameStr.end(), ' ', '_');
+        std::replace(nameStr.begin(), nameStr.end(), ' ', '_');
+        std::replace(nameStr.begin(), nameStr.end(), ' ', '_');*/
+        if (GlobalVariable *gv = module->getNamedGlobal(nameStr))
             return gv;
         
         LLVMContext& ctx = module->getContext();
         Constant *format_const = ConstantDataArray::getString(ctx, str.str());
         GlobalVariable *var
             = new GlobalVariable(*module, ArrayType::get(IntegerType::get(ctx, 8), str.str().size()+1),
-                                 true, GlobalValue::PrivateLinkage, format_const, gvName);
+                                 true, GlobalValue::PrivateLinkage, format_const, nameStr);
         return var;
     }
     
