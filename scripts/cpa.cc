@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #define min(a,b) a<b ? a : b
 
 /*
@@ -24,20 +25,20 @@
 %*/
 
 double fabs(double value){
-	if (value < 0){
-		return value*(-1);
-	}
-	return value;
+    if (value < 0){
+        return value*(-1);
+    }
+    return value;
 }
 
 double MaxAbs(double *values, int size){
-   double max = fabs(values[0]);
-   for (int i = 1; i < size; i++){
-      if (fabs(values[i]) > max){
-         max = fabs(values[i]);
-      }
-   }
-   return max;
+    double max = fabs(values[0]);
+    for (int i = 1; i < size; i++){
+        if (fabs(values[i]) > max){
+            max = fabs(values[i]);
+        }
+    }
+    return max;
 }
 
 
@@ -78,14 +79,14 @@ double *cpa(double *x, double *y, int size, int *n, double *SumRes){
 		np1 = k;
 	}
 	else{
-		if (k == m){
-			fprintf(stderr,"Warning: considering the number of points can not be\n");
+	     if (k == m){
+		fprintf(stderr,"Warning: considering the number of points can not be\n");
       		fprintf(stderr,"         defined if the algorithm is polynomial.\n");
-      	}
-   		else{
+      		fprintf(stderr,"         n = %d.\n",k-1);
+      	      }else{
       		fprintf(stderr,"Warning: the algorithm seems not to be polynomial,\n");
       		fprintf(stderr,"         however, if it is then the order > %d\n",n_max);
-		}
+	      }
 		*n = 0;
 		C[0] = 0;
 		*SumRes = 0;
@@ -121,15 +122,59 @@ double *cpa(double *x, double *y, int size, int *n, double *SumRes){
     return C;
 }
 
+int gcd(int a, int b) {
+    int t;
+    while (a) {
+        t = a;
+        a = b % a;
+        b = t;
+    }
+    return b;
+}
 
-void showResults(int complexidade, double *C, int SumRes, char *variable){
-	int k = complexidade;
+double gcd(double *array, int size) {
+    int ans = (int) array[0] * 10000;
+    for(int i=1; i < size; i++) {
+        ans = gcd(ans, (int) array[i] * 10000);
+    }
+    return ((double)ans) / 10000;
+}
+
+void showResults(int complexidade, double *C, int SumRes, char *variable, int Const) {
+    int k = complexidade;
 	int i;	
-	if (complexidade){
-		printf("O(%s",variable);
-		for(int i = 1; i < complexidade; i++)printf(" x %s",variable);		
-	}	
-	printf(")\n\n");
+	size_t ln = strlen(variable) - 1;
+	if (variable[ln] == '\n')
+	    variable[ln] = '\0';
+	if (complexidade>1)
+    	    printf("O(%s^%d)\n",variable,complexidade);
+        else if(complexidade == 1)
+    	    printf("O(%s)\n",variable);
+
+}
+
+void showPolynomial(int complexidade, double *C, int SumRes, char *variable, int Const){
+    double d = gcd(C, complexidade);
+    int k = complexidade;
+    int i;
+    if (complexidade) {
+        printf("Polynomial = ");
+        for (i = 0; i <= complexidade; i++) {
+            double c = C[i] / d;
+            if (c == 0) {
+                k--;
+                continue;
+            }
+            if (k == 1) {
+                printf("%.2lf * %s + ", c, variable);  
+            } else if (i < complexidade) {
+                printf("%.2lf * %s^%d + ", c, variable, k);
+            } else {
+                printf("%.2lf\n", c);
+            }
+            k--;
+        }
+    }
 }
 
 short check_initial(int argments){
@@ -141,42 +186,40 @@ short check_initial(int argments){
 }
 
 int main(int argc, char **argv){
-  	if (check_initial(argc)) return 1;
-	FILE *csv;
-  	csv = fopen(argv[1], "r");
-  	int degree;
-  	double f1,f2;
-  	double SumRes;  	
-  	char variable[30];
-  	int size = 0;
-  	int i = 0;
-
-    fscanf(csv,"%s", variable);
-  	fscanf(csv,"%d", &size);
-  	double *Xaxis = (double*)malloc(size*sizeof(double));
-  	double *Yaxis = (double*)malloc(size*sizeof(double));
-  	
-  	while (fscanf(csv, "%lf,%lf\n", &f1, &f2) == 2){
-  		Xaxis[i] = f1;
-  		Yaxis[i] = f2;
-  		i++;
-  		if (i >= size) break;
-  		if (feof(csv)){
-  			printf("\nErro: Numero de linhas passado é superior a quantidade de pontos listados\n");
-  			return 1;
-  		}
-  	}
-
-	double *C = cpa(Xaxis, Yaxis, size, &degree, &SumRes);
-	showResults(degree, C, SumRes, variable);
-
-	free(Xaxis);
-	free(Yaxis);
-	free(C);
-	fclose(csv);
-	return 0;
+    if (check_initial(argc)) return 1;
+    FILE *csv;
+    csv = fopen(argv[1], "r");
+    int degree = -1;
+    double f1 = 0,f2 = 0;
+    double SumRes = 0;
+    char variable[100];
+    int size = 0;
+    int i = 0;
+    
+    fgets(variable, 100 ,csv);
+    fscanf(csv,"%d", &size);
+    double *Xaxis = (double*)malloc(size*sizeof(double));
+    double *Yaxis = (double*)malloc(size*sizeof(double));
+    
+    while (fscanf(csv, "%lf,%lf\n", &f1, &f2) == 2){
+        Xaxis[i] = f1;
+        Yaxis[i] = f2;
+        i++;
+        if (i >= size) break;
+        if (feof(csv)){
+            printf("\nErro: Numero de linhas passado é superior a quantidade de pontos listados\n");
+            return 1;
+        }
+    }
+    
+    double *C = cpa(Xaxis, Yaxis, size, &degree, &SumRes);
+    showResults(degree, C, SumRes, variable, 0);
+    showPolynomial(degree, C, SumRes, variable, 0);
+    free(C);
+    
+    free(Xaxis);
+    free(Yaxis);
+    fclose(csv);
+    return 0;
 }
-
-
-
 
