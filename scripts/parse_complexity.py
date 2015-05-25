@@ -150,17 +150,25 @@ class Mul(Expression):
 
 
 def parse(content):
-    result = {}
+    result = defaultdict(dict)
     current_file = None
     for line in content:
         if line.startswith(TAG):
-            current_file = get_line(line.replace(TAG, ''))
-        if line.startswith("O("):
-            complexity = line[line.find("(")+1:line.find(")")]
+            line = line.replace(TAG, '')
+            current_file = get_line(line)
+            current_function = get_function(line)
+        elif line.startswith("O("):
             if not current_file:
                 raise Exception("Invalid file format")
-            result[current_file] = complexity
+            complexity = line[line.find("(")+1:line.find(")")]
+            result[current_function][current_file] = {"comp": complexity}
+        elif line.startswith("Polynomial"):
+            if not current_file or current_file not in result[current_function]:
+                raise Exception("Invalid file format")
+            polynomial = line.split("=")[1].strip()
+            result[current_function][current_file]["poly"] = polynomial
             current_file = None
+			    
     return result
 
 def parse_equations(equations):
@@ -185,6 +193,9 @@ def get_line(filename):
     if not ".csv" in content[-1]:
         raise Exception("Invalid filename " + filename)
     return content[-1][:content[-1].find(".csv")]
+
+def get_function(filename):
+    return filename.split("#")[1]
 
 def simplify(complexity):
     if '@' in complexity:
@@ -229,9 +240,13 @@ def write(filename, content_map):
 
 
 if __name__ == "__main__":
-    if len(sys.argv) != 3:
-        print "Usage: python %s equations_filename filename" % sys.argv[0]
+    if len(sys.argv) < 3 or len(sys.argv) > 4:
+        print "Usage: python %s equations_filename filename [-l]" % sys.argv[0]
         exit()
+    
+    loop_grain = False
+    if len(sys.argv) == 4:
+        loop_grain = True
     
     eq_filename = sys.argv[1]
     filename = sys.argv[2]
@@ -247,11 +262,19 @@ if __name__ == "__main__":
     equations = parse_equations(equations)
     result = parse(content)
     for function in equations:
+        if function not in result:
+            continue
+        
+        print "Function '%s':" % function
         complexity = equations[function]
-        for key in result:
-            complexity = complexity.replace("Line" + key, result[key])
+        
+        for key in sorted(result[function]):
+            complexity = complexity.replace("Line" + key, result[function][key]['comp'])
+            if loop_grain:
+                polynomial = result[function][key]['poly']
+                print "\tLoop at line %s: %s" % (key, polynomial)
 
         complexity = simplify(complexity)
 
-        print "Complexity of function '%s': O(%s)" % (function, complexity)
+        print "\n\tComplexity: O(%s)\n" % complexity
 
