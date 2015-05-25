@@ -9,7 +9,7 @@
 #include "RegionAnalysis.h"
 #include "llvm/IR/Instructions.h"
 #include "llvm/Support/raw_ostream.h"
-#include "../RangeAnalysis/RangeAnalysis.h"
+#include "RangeAnalysis.h"
 
 RegionAnalysis::RegionAnalysis() : ModulePass(ID) {}
 
@@ -52,7 +52,7 @@ bool RegionAnalysis::runOnModule(Module &M) {
             }
         }
     }
-    errs() << "Number of arguments: " << r.getUpper() << "\n";
+    errs() << "Arguments: " << r.getUpper() + 1 << "\n";
     //r.print(errs());
     //errs() << "\n";
     return false;
