@@ -3,15 +3,12 @@
 #include "llvm/Analysis/PostDominators.h"
 #include "llvm/IR/BasicBlock.h"
 #include "llvm/IR/Instruction.h"
-#include "../util/DepGraph.h"
-#include "../util/LoopInfoEx.h"
+#include "../DepGraph/DepGraph.h"
+#include "../DepGraph/LoopInfoEx.h"
 #include "LoopInstrumentation.h"
 #include <string>
 #include <fstream>
 #include <sstream>
-
-
-
 
 
 #ifndef _lcomp_h

@@ -1,7 +1,7 @@
 # Makefile for funextract pass
 
 # Path to top level of LLVM hierarchy
-LEVEL = ../../../..
+#LEVEL = ../../../../..
 
 # Name of the library to build
 LIBRARYNAME = DepGraph

@@ -18,8 +18,8 @@
 #include "llvm/Pass.h"
 #include "llvm/IR/Type.h"
 
-#include "../util/DepGraph.h"
-#include "../util/LoopInfoEx.h"
+#include "../DepGraph/DepGraph.h"
+#include "../DepGraph/LoopInfoEx.h"
 
 using namespace llvm;
 
