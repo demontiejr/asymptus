@@ -17,7 +17,7 @@ source code and install it.
 ## Usage
 
 Asymptus executes over either a C/C++ file or LLVM bytecodes. The simplest way to run our tool
-is to execute ./asymptus input_file.(c|cpp|bc). It will identify how many command line arguments
+is to execute `./asymptus input_file.(c|cpp|bc)`. It will identify how many command line arguments
 the input program reads and generate numeric values for them. You may also use the following
 options:
 ```
