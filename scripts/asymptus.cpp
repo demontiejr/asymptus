@@ -44,10 +44,12 @@ int main(int argc, char** argv){
     std::cerr << "Operating system not supported!\n";
     return 1;
   }
+  /*Verifica se as aplicações necessárias estão no PATH*/
   checkpath();
   string showPoly = "";
   int base = 0;
   bool alreadyRun = false;
+  /*Cria a pasta temporária para guardar os dados*/
   string mkdir = "mkdir -p " + TMP_DIR;
   system(mkdir.c_str());
   for (int i = 1; i < argc; i++){ //Itera sobre a lista de argumentos
@@ -77,7 +79,8 @@ int main(int argc, char** argv){
     }
   }
 
-  if( ! alreadyRun ) //roda o default
+  /*Caso não encontre nenhuma flag válida, geramos entradas aleatórias usando RangeAnalysis*/
+  if( ! alreadyRun )
     runScript(argv, base, argc, showPoly, argv[1], default_);
 
   return 0;
@@ -132,6 +135,7 @@ void showInfo(){
 
 }
 
+/*Pega a lista de argumentos genéricos em *commands e gera entradas aleatórias*/
 void defaultGen(std::list<string> &argslist, string *commands, int nArgs){
   srand (time(NULL));
   string line = "";
@@ -145,9 +149,11 @@ void defaultGen(std::list<string> &argslist, string *commands, int nArgs){
 }
 
 
+/*Armazena as entradas manuais do usuário, para posterior execução*/
 void manualGen(std::list<string> &argslist){
   unsigned number = 1;
   string commandLine;
+  /*Continua lendo entradas até o usuário dar um enter em branco*/
   while(1){
     cout << "Insert the input number " << number << " : ";
     std::getline (cin,commandLine);
@@ -159,12 +165,13 @@ void manualGen(std::list<string> &argslist){
   }
 }
 
+/*Permite o usuário mixar entradas genericas com fixas*/
 void mixGen(std::list<string> &argslist, char **commandLine, int pos, int max){ //arrumar
   char first, last;
   unsigned length;
-  bool *generics = new bool[max]; //vetor com identificacao dos genericos
-  string *kind = new string[max]; //vetor com identificacao dos tipos genericos , se nao der iniciar manaulmente com false
-  string *cmd = new string[max]; //linha de comando unitária
+  bool *generics = new bool[max]; //vetor com identificacao das posições dos genericos
+  string *kind = new string[max]; //vetor com identificacao dos tipos genericos
+  string *cmd = new string[max]; //linha de comando unitária (inclui genericos + concretos)
   int iv = 0;
   string line = "";
 
@@ -205,7 +212,6 @@ void runScript(char **commandLine, int pos, int max, string showPoly, string inp
   string strValue = "";
   std::list<string> argslist;
   string *cmds = new string[max];
-  int jump = 3;
   int num = 0;
   int iv = 0;
   string rBytecode = TMP_DIR + "_rbyte.bc";
@@ -237,15 +243,16 @@ void runScript(char **commandLine, int pos, int max, string showPoly, string inp
   system(genApp.c_str());
   system(genEqs.c_str());
 
+  /*Verifica o método de entrada (--args,--mix,--man) e gera inputs*/
   if(method == withargs){
     while(pos < max){
       cmds[iv] = string(commandLine[pos]);
       pos++; iv++;
     }
     defaultGen(argslist,cmds,iv);
-  }else if(method == manual){ // inputs manuais
+  }else if(method == manual){
     manualGen(argslist);
-  }else if(method == semi){ //geração parcialmente automatica
+  }else if(method == semi){
     mixGen(argslist, commandLine, pos, max);
   }else{ //geração automatica, usando range analysis
     system(getArgc.c_str());
@@ -256,17 +263,18 @@ void runScript(char **commandLine, int pos, int max, string showPoly, string inp
     defaultGen(argslist,cmds,num);
   }
 
-  if(showPoly == "-I") jump++;
-
+  /*Iteração sobre as linhas de commando, a cada iteração do usuário a aplicação é executada com uma entrada*/
   for(std::list<string>::iterator it = argslist.begin(), end = argslist.end(); it != end; it++){
     string command = app + " "  + *it + " 2>&1 >> " + outFile;
     system(command.c_str());
   }
 
-
+  /*Geração dos arquivos CSV*/
   string command5 = "python " + PATH_DIR + "gen_csv.py " + outFile + " 2>&1 >> /dev/null";
   system(command5.c_str());
 
+
+  /*Iteração sobre arquivos do diretório, em busca dos arquivos .csv*/
   struct dirent *dp;
   DIR *dirp = opendir(".");
   string ftype;
@@ -274,7 +282,7 @@ void runScript(char **commandLine, int pos, int max, string showPoly, string inp
     ftype = ".";
     string name(dp->d_name);
     if (name.length() > 3) ftype = name.substr( name.length() - 3 );
-    if (ftype == "csv"){
+    if (ftype == "csv"){ /*Se o arquivo for CSV, executamos o CPA sobre ele*/
       string echo = "echo \"\" >> " + cpaFile;
       string id = "echo \"=== File: " + name + "\" >> " + cpaFile;
       string cpa = PATH_DIR + "cpa " + name + " 2>/dev/null >> " + cpaFile;
@@ -287,9 +295,11 @@ void runScript(char **commandLine, int pos, int max, string showPoly, string inp
   }
   (void)closedir(dirp);
 
+  /*Gera as equações de complexidade*/
   string last = "python " +  PATH_DIR + "parse_complexity.py "+ eqOut + " " + cpaFile + " " + showPoly +  " 2>&1 | c++filt 2>&1";
   system(last.c_str());
 
+  /*Remoção dos arquivos e pasta temporaria*/
   string removeFiles = "rm " + TMP_DIR + "* *.csv";
   string removeDir = "rmdir " + TMP_DIR;
   system(removeFiles.c_str());
@@ -297,13 +307,14 @@ void runScript(char **commandLine, int pos, int max, string showPoly, string inp
   delete [] cmds;
 }
 
+/*Gerador de valores inteiros*/
 string gen_int(){  
   std::stringstream str_val;  
-  str_val << rand() % 300 ; /*Limited because it was generating big numbers*/
+  str_val << rand() % 400 ; /*Limited because it was generating big numbers*/
   return str_val.str();
 }
 
-
+/*Gerador de caracteres*/
 string gen_char(){
   int value;
   char id;
@@ -319,6 +330,7 @@ string gen_char(){
   return str_val.str();
 }
 
+/*Gerador de strings*/
 string gen_string(){
   int size = rand() % 20 + 1;
   string str = "";
@@ -329,13 +341,14 @@ string gen_string(){
   return str;
 }
 
+/*Gerador de numeros reais*/
 string gen_float(){
   string num = gen_int();
   string mantisa = gen_int();
   return num + "." + mantisa + gen_int();
 }
 
-
+/*Parser, seleciona qual tipo de valor gerar*/
 string gen_value(string token){
   string value = "";
   if(token == "int"){
