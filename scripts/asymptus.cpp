@@ -66,7 +66,7 @@ int main(int argc, char** argv){
       runScript(argv, base, argc, showPoly, argv[1], manual);
       alreadyRun = true;
       break;
-    }else if(! strcmp(argv[i],"--help" )){
+    }else if(! strcmp(argv[i],"--help" ) || ! strcmp(argv[i],"-h" )){
       showInfo();
       alreadyRun = true;
       break;
@@ -111,20 +111,22 @@ void checkpath(){
 void showInfo(){
   stringstream info;
   info << "OVERVIEW: Asymptus - Symbolic Assymptotic Complexity Evaluator \n\
-           \nUSAGE: asy <input C/Bytecode file> [options] \n\
+           \nUSAGE: asymptus <C/Bytecode input file> [options] \n\
            \nOPTIONS: \n\
-           \n  --with-args  <input types>                       Allows you to choose the types for the inputs \
-           \n  --mix        {generic input} <fixed inputs>      Allows you to mix generic and fixed inputs \
-           \n  --man        <command line as input argument>    Allows you to provide manual inputs to your program \
-	   \n\n  If you do not provide any option, the tool will automatically identify the number os argments needed \
-           \n  by the program and then will generate numeric inputs to it. \
-           \n\nTYPES: \
-           \n  num          Generates random float numbers \
-           \n  int          Generates random integer numbers \
-           \n  float        Same as num \
-           \n  char         Generates random single character \
-           \n  string       Generates strings \
-           \n  bool         Generates boolean value\n\n";
+           \n  --args <input types>                      Allows the user to specify the types of command line arguments. \
+           \n                                            It is necessary to specify as many argument as the program reads \
+           \n                                            in order to have a correct execution. The types may be one of the \
+           \n                                            following: int, long, float, double, num, char or string. \
+           \n\n  --mix  {generic input} <fixed inputs>     Allows the user to mix random generated arguments with concrete \
+           \n                                            data. When using this option, the random arguments types have to \
+           \n                                            come between {}. For instance, --mix myInput {int}.\
+           \n\n  --man  <command line as input argument>   This option will ask the user for only concrete inputs. Asymptus will \
+           \n                                            ask for the inputs of each desired execution. An empty line means all \
+           \n                                            data has been provided. \
+           \n\n  -v                                        Verbose mode. Prints the polynomial for each loop inside a function.\
+	   \n\n  If you do not provide any option, the tool will automatically identify the number os arguments needed \
+           \n  by the program and then will generate integer values to it. \
+           \n\n";
 
    cout << info.str();
 
@@ -348,9 +350,11 @@ string gen_value(string token){
     value = gen_float();
   }else if(token == "num"){
     value = gen_float();
+  }else if(token == "long"){
+    value = gen_int() + gen_int();
   }else{
     std::cerr << "\nIncorrect type: (" << token << ")\n";
-  }    
+  }
   return value;
-  
 }
+
