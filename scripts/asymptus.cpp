@@ -1,6 +1,6 @@
 /*
-* ToDo: Create Error chain
-* Add kill to the pathChecker
+* ToDo:
+*
 */
 
 #include <cstring>
@@ -9,113 +9,116 @@
 #include <fstream>
 #include <sstream>
 #include <time.h>
-#include <iostream>
 #include <cstdlib>
 
-using std::stringstream;
-using std::cin;
-using std::cout;
-
-/*Pasta onde deve ter o CPA e os arquivos .py, caso não estejam no PATH*/
-const string PATH_DIR = "/usr/bin/asymptusProfiler/";
-/*Pasta onde serão gerados os arquivos temporarios*/
-const string TMP_DIR = "/tmp/asymptus/";
-/*Maior inteiro limite*/
-int MAX_INT = 100;
-
-const int default_ = 0;
-const int withargs = 1;
-const int manual = 2;
-const int semi = 3;
-const int nRuns = 5;
-
-#ifdef __APPLE__
-  const string extension = "dylib";
-  const bool osValid = true;
-#elif __linux
-  const string extension = "so";
-  const bool osValid = true;
-#else
-  const string extension = "";
-  const bool osValid = false;
-#endif
-
-
 int main(int argc, char** argv){
-  if(!osValid){
+  if(!osValidity ){
     std::cerr << "Operating system not supported!\n";
     return 1;
   }
-  /*Verifica se as aplicações necessárias estão no PATH*/
-  checkpath();
+  string mkdir = "mkdir -p " + TMP_DIR;
+  system(mkdir.c_str());
+  bool executed = true;
+
+  /*Verify if the needed applications are in the PATH*/
+  if(!pathValidity()) return 1;;
   string showPoly = "";
   int base = 0;
   bool alreadyRun = false;
-  /*Cria a pasta temporária para guardar os dados*/
-  string mkdir = "mkdir -p " + TMP_DIR;
-  system(mkdir.c_str());
-  for (int i = 1; i < argc; i++){ //Itera sobre a lista de argumentos
+  /*Creating the temporary folder*/
+  for (int i = 1; i < argc; i++){ //Iterating over the arguments' list
     if( ! strcmp(argv[i],"--args" )){
       base = i+1;
-      runScript(argv, base, argc, showPoly, argv[1], withargs);
+      executed = runScript(argv, base, argc, showPoly, argv[1], withargs);
       alreadyRun = true;
       break;
     }else if( ! strcmp(argv[i],"--mix" )){
       base = i+1;
-      runScript(argv, base, argc, showPoly, argv[1], semi);
+      executed = runScript(argv, base, argc, showPoly, argv[1], semi);
       alreadyRun = true;
       break;
     }else if( ! strcmp(argv[i],"--man" )){
       base = i+1;
-      runScript(argv, base, argc, showPoly, argv[1], manual);
+      executed = runScript(argv, base, argc, showPoly, argv[1], manual);
       alreadyRun = true;
       break;
     }else if(! strcmp(argv[i],"--help" ) || ! strcmp(argv[i],"-h" )){
       showInfo();
       alreadyRun = true;
       break;
-    }else if(! strcmp(argv[i],"--max" ) || ! strcmp(argv[i],"-max-num" )){
-      if( argc > i+1 )
-        MAX_INT = atoi(argv[i+1]);
-      else
+    }else if(! strcmp(argv[i],"-m" ) || ! strcmp(argv[i],"--max-num" )){
+      if( argc > i+1 ){
+        /*avoid cases where the user has used the flag, but forgot the value or did not provide a valid one*/
+	int value = atoi(argv[i+1]);
+        MAX_INT = (value > 0) ? value : MAX_INT;
+      }else
         std::cerr << "Using the default max value: " << MAX_INT << "\n";
-    }
-
-    if( ! strcmp(argv[i],"-v" )){
+    }else if( ! strcmp(argv[i],"--runs" ) ||  ! strcmp(argv[i],"-r" ) ){
+      if( argc > i+1 ){
+        /*avoid cases where the user has used the flag, but forgot the value or did not provide a valid one*/
+        int value = atoi(argv[i+1]);
+        N_RUNS = (value > 0) ? value : N_RUNS;
+      }else{
+        std::cerr << "Using the default number of runs: " << N_RUNS << "\n";}
+    }else if( ! strcmp(argv[i],"-v" ) ||  ! strcmp(argv[i],"--verbose" )){
       showPoly = "-I";
     }
   }
 
-  /*Caso não encontre nenhuma flag válida, geramos entradas aleatórias usando RangeAnalysis*/
+  /*It addresses the case where the user did not provide any input flag*/
   if( ! alreadyRun )
-    runScript(argv, base, argc, showPoly, argv[1], default_);
+    executed = runScript(argv, base, argc, showPoly, argv[1], default_);
 
+  if(! executed )
+    std::cerr << "\nnAsymptus aborted due to the previous error(s).\n";
   return 0;
 }
 
 
-void checkpath(){
+bool pathValidity(){
   /* type
    * command -v
    * hash   */
+  int id;
+  bool failed = false;
+  string name;
+  string python = "hash python 2>/dev/null || { echo \"1 Python\" ;} >> "+TMP_DIR+"error";
+  string clang = "hash clang 2>/dev/null ||  { echo \"1 clang\" ;} >> "+TMP_DIR+"error ";
+  string clangpp = "hash clang++ 2>/dev/null ||  { echo \"1 clang++\" ;} >> "+TMP_DIR+"error ";
+  string opt = "hash opt 2>/dev/null ||  { echo \"1 opt\" ;} >> "+TMP_DIR+"error ";
+  string cpa = "ls " + PATH_DIR + "cpa 2>/dev/null 1>/dev/null ||  { echo \"2 cpa\" ;} >> "+TMP_DIR+"error";
+  string gen = "ls " + PATH_DIR + "gen_csv.py 2>/dev/null 1>/dev/null ||  { echo \"2 gen_csv.py\" ;} >> "+TMP_DIR+"error";
+  string parser = "ls " + PATH_DIR + "parse_complexity.py 2>/dev/null 1>/dev/null ||  { echo \"2 parse_complexity.py\" ; } >> "+TMP_DIR+"error";
+  string checker = TMP_DIR + "error";
+  string removeFiles = "rm " + TMP_DIR + "* 2>/dev/null";   
 
-
-  string python = "hash python 2>/dev/null || { echo >&2 \"Python is required but it's not installed or not in path.  Aborting.\";}";
-  string clang = "hash clang 2>/dev/null || { echo >&2 \"clang (LLVM) is required but it's not installed or not in path.  Aborting.\";}";
-  string clangpp = "hash clang++ 2>/dev/null || { echo >&2 \"clang++ (LLVM) is required but it's not installed or not in path.  Aborting.\";}";
-  string opt = "hash opt 2>/dev/null || { echo >&2 \"opt (LLVM) is required but it's not installed or not in path.  Aborting.\";}";
-  string cpa = "hash " + PATH_DIR + "cpa 2>/dev/null || { echo >&2 \"CPA is required but it's not installed or not in path.  Aborting.\"; }";
-  string gen = "hash " + PATH_DIR + "gen_csv.py 2>/dev/null || { echo >&2 \"gen_csv.py script is not in your path.  Aborting.\"; }";
-  string parser = "hash " + PATH_DIR + "parse_complexity.py 2>/dev/null || { echo >&2 \"parser_complexity.py is not in your path.  Aborting.\"; }";
-
+  system(removeFiles.c_str());
   system(python.c_str());
   system(clang.c_str());
   system(clangpp.c_str());
-  system(cpa.c_str());
   system(opt.c_str());
+  system(cpa.c_str());
   system(gen.c_str());
   system(parser.c_str());
 
+  std::ifstream infile(checker.c_str());
+  while (infile >> id >> name){
+    if(id == 1){
+      failed = true;
+      std::cerr << name << " is needed, but it is not in the PATH. Aborting !\n";
+    }else if(id == 2){
+      failed = true;
+      std::cerr << name << " is needed, but it is not in the folder: " << PATH_DIR << " . Aborting !\n";
+    }
+  }
+
+  if(failed){
+    string removeDir = "rmdir " + TMP_DIR;
+    system(removeFiles.c_str());
+    system(removeDir.c_str());
+    return false; /*Files are missing, failed*/
+  }
+  return true; /*Everything is OK*/
 }
 
 void showInfo(){
@@ -133,7 +136,10 @@ void showInfo(){
            \n\n  --man  <command line as input argument>   This option will ask the user for only concrete inputs. Asymptus will \
            \n                                            ask for the inputs of each desired execution. An empty line means all \
            \n                                            data has been provided. \
-           \n\n  -v                                        Verbose mode. Prints the polynomial for each loop inside a function.\
+           \n\n  --verbose  or  -v                         Verbose mode. Prints the polynomial for each loop inside a function.\
+           \n\n  --max-num  or  -m  <value>                Define the max value that can be generated. (Default = 150)\
+           \n\n  --runs     or  -r  <value>                Define the amount of times that the user application will run with \
+           \n                                            different arguments. (Default = 5) \
 	   \n\n  If you do not provide any option, the tool will automatically identify the number os arguments needed \
            \n  by the program and then will generate integer values to it. \
            \n\n";
@@ -142,11 +148,32 @@ void showInfo(){
 
 }
 
-/*Pega a lista de argumentos genéricos em *commands e gera entradas aleatórias*/
+bool execute(string command, string name){
+  string newCommand = command + "; echo $? >> " + TMP_DIR + "id_" + name ;
+  string filePath = TMP_DIR  + "id_" + name ;
+  string removeMe = "rm " + TMP_DIR  + "id_" + name ;
+  int id;
+
+  system(newCommand.c_str());
+  std::ifstream read(filePath.c_str());
+  read>>id;
+  if(id){
+    string removeFiles = "rm " + TMP_DIR + "* 2>/dev/null";  
+    string removeDir = "rmdir " + TMP_DIR;
+    system(removeFiles.c_str());
+    system(removeDir.c_str());
+    return false; /*Error during execution*/
+  }
+  system(removeMe.c_str());
+  return true; /*Everything OK*/
+}
+
+
+/*Generates random values according to the generics values defined in the commands string array*/
 void defaultGen(std::list<string> &argslist, string *commands, int nArgs){
   srand (time(NULL));
   string line = "";
-  for (int i =0; i < nRuns; i++){
+  for (int i =0; i < N_RUNS; i++){
     for(int j = 0; j < nArgs; j++){
         line += gen_value(commands[j]) + " ";
     }
@@ -156,11 +183,11 @@ void defaultGen(std::list<string> &argslist, string *commands, int nArgs){
 }
 
 
-/*Armazena as entradas manuais do usuário, para posterior execução*/
+/*It uses a list to stores the manual entries provided by the user*/
 void manualGen(std::list<string> &argslist){
   unsigned number = 1;
   string commandLine;
-  /*Continua lendo entradas até o usuário dar um enter em branco*/
+  /*The function will continue to read entries until the user provide a blank entry*/
   while(1){
     cout << "Insert the input number " << number << " : ";
     std::getline (cin,commandLine);
@@ -172,13 +199,13 @@ void manualGen(std::list<string> &argslist){
   }
 }
 
-/*Permite o usuário mixar entradas genericas com fixas*/
-void mixGen(std::list<string> &argslist, char **commandLine, int pos, int max){ //arrumar
+/*Function that allows the user to mix generics and concrete inputs*/
+void mixGen(std::list<string> &argslist, char **commandLine, int pos, int max){
   char first, last;
   unsigned length;
-  bool *generics = new bool[max]; //vetor com identificacao das posições dos genericos
-  string *kind = new string[max]; //vetor com identificacao dos tipos genericos
-  string *cmd = new string[max]; //linha de comando unitária (inclui genericos + concretos)
+  bool *generics = new bool[max]; /*Identify which arguments are generic.*/
+  string *kind = new string[max]; /*Identify which is the generic type (num, char, string).*/
+  string *cmd = new string[max];
   int iv = 0;
   string line = "";
 
@@ -197,7 +224,7 @@ void mixGen(std::list<string> &argslist, char **commandLine, int pos, int max){ 
   }
 
   srand (time(NULL));
-  for (int i =0; i < nRuns; i++){
+  for (int i =0; i < N_RUNS; i++){
     for(int j = 0; j < iv; j++){
       if(generics[j]){
         line += gen_value(kind[j]) + " ";
@@ -215,12 +242,20 @@ void mixGen(std::list<string> &argslist, char **commandLine, int pos, int max){ 
 }
 
 
-void runScript(char **commandLine, int pos, int max, string showPoly, string inputFile, int method){
+string getExtension(string name){
+  unsigned size = name.length();
+  if(size >= 3)
+    return name.substr( size - 3 ); /*Return the last 3 char*/
+  return ".c";
+}
+
+bool runScript(char **commandLine, int pos, int max, string showPoly, string inputFile, int method){
   string strValue = "";
   std::list<string> argslist;
   string *cmds;
   int num = 0;
   int iv = 0;
+  string fileType = getExtension(inputFile);
   string rBytecode = TMP_DIR + "_rbyte.bc";
   string optBytecode = TMP_DIR + "_optbyte.bc";
   string app = TMP_DIR + "_app.exe";
@@ -228,7 +263,6 @@ void runScript(char **commandLine, int pos, int max, string showPoly, string inp
   string rangedValue = TMP_DIR + "ranged.value";
   string outFile = TMP_DIR + "saida";
   string cpaFile = TMP_DIR + "CPA.out";
-  string fileType = inputFile.substr( inputFile.length() - 3 );
   string compile  = "clang++ -w  -mllvm -disable-llvm-optzns -emit-llvm -g -c " + inputFile + " -o " + rBytecode ;
   string copybc = "cp " + inputFile + " " + rBytecode;
   string instrument = "opt  -load RangeAnalysis."+ extension +" -load DepGraph." + extension + " -load ComplexityInference." + extension + " -mem2reg -loop-simplify \
@@ -240,17 +274,18 @@ void runScript(char **commandLine, int pos, int max, string showPoly, string inp
   string getArgc = "opt -load RangeAnalysis."+ extension + " -load DepGraph."+ extension +" -load ComplexityInference."+ extension +" -instnamer -mem2reg -break-crit-edges -vssa \
                    -region-analysis " + optBytecode + " -disable-output >> " + rangedValue;
 
-  if(fileType == ".bc" || fileType == "rbc")
-    system(copybc.c_str()); 
-  else
-    system(compile.c_str());
 
-  system(compile.c_str());
-  system(instrument.c_str());
-  system(genApp.c_str());
-  system(genEqs.c_str());
+  if(fileType == ".bc" || fileType == "rbc" ){
+    if(! execute(copybc, "cp")) return false;
+  }else{
+    if(! execute(compile, "clang++")) return false;
+  }
 
-  /*Verifica o método de entrada (--args,--mix,--man) e gera inputs*/
+  if(! execute(instrument, "opt")) return false;
+  if(! execute(genApp, "clang++")) return false;
+  if(! execute(genEqs, "opt")) return false;
+
+  /*Verifing which is the input flag (--args,--mix,--man) and generating the inputs*/
   if(method == withargs){
     cmds = new string[max];
     while(pos < max){
@@ -262,8 +297,8 @@ void runScript(char **commandLine, int pos, int max, string showPoly, string inp
     manualGen(argslist);
   }else if(method == semi){
     mixGen(argslist, commandLine, pos, max);
-  }else{ //geração automatica, usando range analysis
-    system(getArgc.c_str());
+  }else{ /*automatic generation using Range Analysis*/
+    if(! execute(getArgc, "opt")) return false;
     std::ifstream read(rangedValue.c_str());
     read>>num;
     cmds = new string[num];
@@ -271,18 +306,19 @@ void runScript(char **commandLine, int pos, int max, string showPoly, string inp
       cmds[i] = "num";
     defaultGen(argslist,cmds,num);
   }
-  /*Iteração sobre as linhas de commando, a cada iteração do usuário a aplicação é executada com uma entrada*/
+  /*Iterating over command lines, in each iteration the user's application is run with an input*/
   for(std::list<string>::iterator it = argslist.begin(), end = argslist.end(); it != end; it++){
     string command = app + " "  + *it + " 2>&1 >> " + outFile;
+    //if(! execute(command, "userApp")) return false;
     system(command.c_str());
   }
 
-  /*Geração dos arquivos CSV*/
+  /*Generating CSV files*/
   string command5 = "python " + PATH_DIR + "gen_csv.py " + outFile + " 2>&1 >> /dev/null";
-  system(command5.c_str());
+  if(! execute(command5, "gen_csv")) return false;
 
 
-  /*Iteração sobre arquivos do diretório, em busca dos arquivos .csv*/
+  /*Searching for the .csv files*/
   struct dirent *dp;
   DIR *dirp = opendir(".");
   string ftype;
@@ -290,7 +326,7 @@ void runScript(char **commandLine, int pos, int max, string showPoly, string inp
     ftype = ".";
     string name(dp->d_name);
     if (name.length() > 3) ftype = name.substr( name.length() - 3 );
-    if (ftype == "csv"){ /*Se o arquivo for CSV, executamos o CPA sobre ele*/
+    if (ftype == "csv"){ /*If it's a CSV file, we run CPA app using the .csv as input*/
       string echo = "echo \"\" >> " + cpaFile;
       string id = "echo \"=== File: " + name + "\" >> " + cpaFile;
       string cpa = PATH_DIR + "cpa " + name + " 2>/dev/null >> " + cpaFile;
@@ -303,16 +339,19 @@ void runScript(char **commandLine, int pos, int max, string showPoly, string inp
   }
   (void)closedir(dirp);
 
-  /*Gera as equações de complexidade*/
+  /*analyzing results and generating complexities*/
   string last = "python " +  PATH_DIR + "parse_complexity.py "+ eqOut + " " + cpaFile + " " + showPoly +  " 2>&1 | c++filt 2>&1";
-  system(last.c_str());
+  if(! execute(last, "parse_complexity")) return false;
 
-  /*Remoção dos arquivos e pasta temporaria*/
+
+  /*Removing temporary files*/
   string removeFiles = "rm " + TMP_DIR + "* *.csv";
   string removeDir = "rmdir " + TMP_DIR;
   system(removeFiles.c_str());
   system(removeDir.c_str());
-  delete [] cmds;
+  if (method != manual && method != semi) delete [] cmds;
+
+  return true; /*Script executed as expected*/
 }
 
 /*Gerador de valores inteiros*/
@@ -338,7 +377,7 @@ string gen_char(){
   return str_val.str();
 }
 
-/*Gerador de strings*/
+/*strings generator*/
 string gen_string(){
   int size = rand() % 20 + 1;
   string str = "";
@@ -349,14 +388,14 @@ string gen_string(){
   return str;
 }
 
-/*Gerador de numeros reais*/
+/*float number generator*/
 string gen_float(){
   string num = gen_int();
   string mantisa = gen_int();
   return num + "." + mantisa + gen_int();
 }
 
-/*Parser, seleciona qual tipo de valor gerar*/
+/*Parser, choose which value will be generate, according to its type*/
 string gen_value(string token){
   string value = "";
   if(token == "int"){
