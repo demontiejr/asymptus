@@ -181,8 +181,8 @@ def parse_equations(equations):
             current_function = line.split(' ')[1].strip()
         else:
             equation = line.strip()
-            if not current_function:
-                raise Exception("Invalid file format")
+            #if not current_function:
+            #    raise Exception("Invalid file format")
             if equation:
                 result[current_function] = equation
             current_function = None

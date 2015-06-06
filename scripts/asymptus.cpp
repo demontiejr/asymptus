@@ -17,7 +17,7 @@ using std::cin;
 using std::cout;
 
 /*Pasta onde deve ter o CPA e os arquivos .py, caso não estejam no PATH*/
-const string PATH_DIR = "./bin/";
+const string PATH_DIR = "/usr/bin/asymptusProfiler/";
 /*Pasta onde serão gerados os arquivos temporarios*/
 const string TMP_DIR = "/tmp/asymptus/";
 

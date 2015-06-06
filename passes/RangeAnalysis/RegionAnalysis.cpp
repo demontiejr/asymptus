@@ -53,6 +53,7 @@ bool RegionAnalysis::runOnModule(Module &M) {
         }
     }
     errs() << "Arguments: " << r.getUpper() << "\n";
+    outs() <<  r.getUpper();
     //r.print(errs());
     //errs() << "\n";
     return false;
