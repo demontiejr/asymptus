@@ -231,7 +231,7 @@ void runScript(char **commandLine, int pos, int max, string showPoly, string inp
                   -correlated-propagation -instcombine -scalar-evolution -constmerge -instnamer -lcomp -disable-output " + rBytecode  + " >> " + eqOut  + " 2>&1 ";
 
   string getArgc = "opt -load RangeAnalysis."+ extension + " -load DepGraph."+ extension +" -load ComplexityInference."+ extension +" -instnamer -mem2reg -break-crit-edges -vssa \
-                   -region-analysis " + optBytecode + " -disable-output >> " + rangedValue +  " 2>&1";
+                   -region-analysis " + optBytecode + " -disable-output >> " + rangedValue;
 
   if(fileType == ".bc" || fileType == "rbc")
     system(copybc.c_str()); 
