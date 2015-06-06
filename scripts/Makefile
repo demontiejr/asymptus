@@ -10,7 +10,7 @@ all: asymptus cpa
 
 asymptus: $(ASS)
 	@echo " --- Compiling Asymptus --- "
-	@$(CC)  $< -o asymptus
+	@$(CC) -g  $< -o asymptus
 
 cpa: $(CPA)
 	@echo " --- Compiling CPA --- "

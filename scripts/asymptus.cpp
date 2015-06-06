@@ -20,6 +20,8 @@ using std::cout;
 const string PATH_DIR = "/usr/bin/asymptusProfiler/";
 /*Pasta onde serão gerados os arquivos temporarios*/
 const string TMP_DIR = "/tmp/asymptus/";
+/*Maior inteiro limite*/
+int MAX_INT = 100;
 
 const int default_ = 0;
 const int withargs = 1;
@@ -72,6 +74,11 @@ int main(int argc, char** argv){
       showInfo();
       alreadyRun = true;
       break;
+    }else if(! strcmp(argv[i],"--max" ) || ! strcmp(argv[i],"-max-num" )){
+      if( argc > i+1 )
+        MAX_INT = atoi(argv[i+1]);
+      else
+        std::cerr << "Please insert the max value\n";
     }
 
     if( ! strcmp(argv[i],"-v" )){
@@ -211,7 +218,7 @@ void mixGen(std::list<string> &argslist, char **commandLine, int pos, int max){ 
 void runScript(char **commandLine, int pos, int max, string showPoly, string inputFile, int method){
   string strValue = "";
   std::list<string> argslist;
-  string *cmds = new string[max];
+  string *cmds;
   int num = 0;
   int iv = 0;
   string rBytecode = TMP_DIR + "_rbyte.bc";
@@ -245,6 +252,7 @@ void runScript(char **commandLine, int pos, int max, string showPoly, string inp
 
   /*Verifica o método de entrada (--args,--mix,--man) e gera inputs*/
   if(method == withargs){
+    cmds = new string[max];
     while(pos < max){
       cmds[iv] = string(commandLine[pos]);
       pos++; iv++;
@@ -258,11 +266,11 @@ void runScript(char **commandLine, int pos, int max, string showPoly, string inp
     system(getArgc.c_str());
     std::ifstream read(rangedValue.c_str());
     read>>num;
+    cmds = new string[num];
     for(int i =0; i < num; i++)
       cmds[i] = "num";
     defaultGen(argslist,cmds,num);
   }
-
   /*Iteração sobre as linhas de commando, a cada iteração do usuário a aplicação é executada com uma entrada*/
   for(std::list<string>::iterator it = argslist.begin(), end = argslist.end(); it != end; it++){
     string command = app + " "  + *it + " 2>&1 >> " + outFile;
@@ -310,7 +318,7 @@ void runScript(char **commandLine, int pos, int max, string showPoly, string inp
 /*Gerador de valores inteiros*/
 string gen_int(){  
   std::stringstream str_val;  
-  str_val << rand() % 400 ; /*Limited because it was generating big numbers*/
+  str_val << rand() % MAX_INT ; /*Limited because it was generating big numbers*/
   return str_val.str();
 }
 
