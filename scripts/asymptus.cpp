@@ -78,7 +78,7 @@ int main(int argc, char** argv){
       if( argc > i+1 )
         MAX_INT = atoi(argv[i+1]);
       else
-        std::cerr << "Please insert the max value\n";
+        std::cerr << "Using the default max value: " << MAX_INT << "\n";
     }
 
     if( ! strcmp(argv[i],"-v" )){
