@@ -39,6 +39,10 @@ options:
  -h or --help             Prints this usage message.
 ```
 
+##### Demonstration of usage (audio in Portuguese)
+
+[![Demo video](http://img.youtube.com/vi/pzfrIDfoCEc/0.jpg)](https://youtu.be/pzfrIDfoCEc)
+
 ## Download
 
 - [Linux binaries](linx here)
