@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html>
+
+  <head>
+    <meta charset='utf-8'>
+    <meta http-equiv="X-UA-Compatible" content="chrome=1">
+    <meta name="description" content="Asymptus : Automatic inference of function complexity through polynomial interpolation">
+
+    <link rel="stylesheet" type="text/css" media="screen" href="stylesheets/stylesheet.css">
+
+    <title>Asymptus</title>
+  </head>
+
+  <body>
+
+    <!-- HEADER -->
+    <div id="header_wrap" class="outer">
+        <header class="inner">
+          <a id="forkme_banner" href="https://github.com/demontiejr/asymptus">View on GitHub</a>
+
+          <h1 id="project_title">Asymptus</h1>
+          <h2 id="project_tagline">Automatic inference of function complexity through polynomial interpolation</h2>
+
+            <section id="downloads">
+              <a class="zip_download_link" href="https://github.com/demontiejr/asymptus/zipball/master">Download this project as a .zip file</a>
+              <a class="tar_download_link" href="https://github.com/demontiejr/asymptus/tarball/master">Download this project as a tar.gz file</a>
+            </section>
+        </header>
+    </div>
+
+    <!-- MAIN CONTENT -->
+    <div id="main_content_wrap" class="outer">
+      <section id="main_content" class="inner">
+        <h1>
+<a id="asymptus-complexity-analyzer" class="anchor" href="#asymptus-complexity-analyzer" aria-hidden="true"><span class="octicon octicon-link"></span></a>Asymptus Complexity Analyzer</h1>
+
+<p>Asymptus is a tool for automatic inference of function complexity. It uses a hibrid approach, 
+mixing static analysis and dynamic profiling, in order to provide more accurate results.</p>
+
+<p>This tool was implemented by <a href="https://github.com/demontiejr" class="user-mention">@demontiejr</a> and <a href="https://github.com/juniocezar" class="user-mention">@juniocezar</a>.</p>
+
+<h1>
+<a id="installing" class="anchor" href="#installing" aria-hidden="true"><span class="octicon octicon-link"></span></a>Installing</h1>
+
+<p>Asymptus requires LLVM 3.4 to performe static analysis. To install LLVM 3.4 you can follow
+these tutorials: <a href="http://llvm.org/docs/GettingStarted.html#checkout-llvm-from-subversion">downloading a specific version of LLVM</a>
+and <a href="http://llvm.org/docs/GettingStarted.html#getting-started-quickly-a-summary">installing LLVM</a>.
+Note that its necessary to also install clang, the LLVM front-end.</p>
+
+<p>Once you have a working installation of LLVM 3.4, you can download the Asymptus binaries or
+source code and install it.</p>
+
+<h2>
+<a id="usage" class="anchor" href="#usage" aria-hidden="true"><span class="octicon octicon-link"></span></a>Usage</h2>
+
+<p>Asymptus executes over either a C/C++ file or LLVM bytecodes. The simplest way to run our tool
+is to execute <code>./asymptus input_file.(c|cpp|bc)</code>. It will identify how many command line arguments
+the input program reads and generate numeric values for them. You may also use the following
+options:</p>
+
+<pre><code> --args type ....         Allows the user to specify the types of command line arguments.
+                          It is necessary to specify as many argument as the program reads
+                          in order to have a correct execution. The types may be one of the
+                          following: int, long, float, double, num, char or string.
+
+ --mix ARG ..             Allows the user to mix random generated arguments with concrete 
+                          data. When using this option, the random arguments types have to 
+                          come between {}. For instance, --mix myInput {int}.
+
+ --man                    This option will ask the user for only concrete inputs. Asymptus will
+                          ask for the inputs of each desired execution. An empty line means all
+                          data has been provided.
+
+ -v                       Verbose mode. Prints the polynomial for each loop inside a function.
+
+ -h or --help             Prints this usage message.
+</code></pre>
+
+<h5>
+<a id="demonstration-of-usage-audio-in-portuguese" class="anchor" href="#demonstration-of-usage-audio-in-portuguese" aria-hidden="true"><span class="octicon octicon-link"></span></a>Demonstration of usage (audio in Portuguese)</h5>
+
+
+
+<h2>
+<a id="download" class="anchor" href="#download" aria-hidden="true"><span class="octicon octicon-link"></span></a>Download</h2>
+
+<ul>
+<li><a href="linx%20here">Linux binaries</a></li>
+<li><a href="link%20here">Mac OS X binaries</a></li>
+</ul>
+      </section>
+    </div>
+
+    <!-- FOOTER  -->
+    <div id="footer_wrap" class="outer">
+      <footer class="inner">
+        <p class="copyright">Asymptus maintained by <a href="https://github.com/demontiejr">demontiejr</a></p>
+        <p>Published with <a href="https://pages.github.com">GitHub Pages</a></p>
+      </footer>
+    </div>
+
+    
+
+  </body>
+</html>
