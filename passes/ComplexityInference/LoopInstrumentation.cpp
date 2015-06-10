@@ -366,7 +366,7 @@ set<Value*> getLoopInputs(Loop *L, Graph *depGraph) {
                     checkOperands(value);
                     loopInputs.insert(value);
                 }else if(isa<CallInst>(value)){
-                    checkCalledFunction(value);
+                    //checkCalledFunction(value);
                     loopInputs.insert(value);
                 }else{
                     loopInputs.insert(value);
