@@ -17,7 +17,7 @@ CountTamableLoops::CountTamableLoops() : FunctionPass(ID) {}
 
 void CountTamableLoops::getAnalysisUsage(AnalysisUsage &AU) const{
     AU.addRequired<functionDepGraph>();
-    AU.addRequiredTransitive<LoopInfo>();
+    AU.addRequiredTransitive<LoopInfoWrapperPass>();
 }
 
 bool CountTamableLoops::runOnFunction(Function &F) {    
@@ -25,7 +25,7 @@ bool CountTamableLoops::runOnFunction(Function &F) {
     functionDepGraph& DepGraph = getAnalysis<functionDepGraph> ();
     Graph* depGraph = DepGraph.depGraph;
     
-    LoopInfo& li = getAnalysis<LoopInfo>();
+    LoopInfo& li = getAnalysis<LoopInfoWrapperPass>().getLoopInfo();
     
     for (LoopInfo::iterator lit = li.begin(), lend = li.end(); lit != lend; lit++) {
         Loop* l = *lit;

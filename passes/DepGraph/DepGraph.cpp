@@ -543,7 +543,7 @@ void Graph::toDot(std::string s) {
 
 void Graph::toDot(std::string s, const std::string fileName) {
 
-        std::string ErrorInfo;
+        /*std::string ErrorInfo;
 
         raw_fd_ostream File(fileName.c_str(), ErrorInfo);
 
@@ -553,7 +553,7 @@ void Graph::toDot(std::string s, const std::string fileName) {
                 return;
         }
 
-        this->toDot(s, &File);
+        this->toDot(s, &File);*/
 
 }
 
@@ -818,7 +818,7 @@ OpNode* llvm::Graph::findOpNode(llvm::Value* op) {
 
 void llvm::Graph::deleteCallNodes(Function* F) {
 
-        for (Value::use_iterator UI = F->use_begin(), E = F->use_end(); UI != E; ++UI) {
+        for (Value::user_iterator UI = F->user_begin(), E = F->user_end(); UI != E; ++UI) {
                 User *U = *UI;
 
                 // Ignore blockaddress uses
@@ -1629,7 +1629,8 @@ void moduleDepGraph::matchParametersAndReturnValues(Function &F) {
         }
 
         for (Value::use_iterator UI = F.use_begin(), E = F.use_end(); UI != E; ++UI) {
-                User *U = *UI;
+                Use &use = *UI;
+                User *U = use.getUser();
 
                 // Ignore blockaddress uses
                 if (isa<BlockAddress> (U))
@@ -1643,7 +1644,7 @@ void moduleDepGraph::matchParametersAndReturnValues(Function &F) {
                 Instruction *caller = cast<Instruction> (U);
 
                 CallSite CS(caller);
-                if (!CS.isCallee(UI))
+                if (!CS.isCallee(&use))
                         continue;
 
                 // Iterate over the real parameters and put them in the data structure

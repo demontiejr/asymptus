@@ -14,7 +14,7 @@
 #include "llvm/IR/Instructions.h"
 #include "llvm/IR/InstrTypes.h"
 #include "llvm/Support/raw_ostream.h"
-#include "llvm/Support/CallSite.h"
+#include "llvm/IR/CallSite.h"
 #include "llvm/Support/Debug.h"
 #include "llvm/ADT/Statistic.h"
 

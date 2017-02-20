@@ -2,5 +2,7 @@
 *.d
 *.pyc
 *.*~
+*.out
+*.status
 
 /*/Debug+Asserts/*

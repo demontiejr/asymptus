@@ -23,14 +23,14 @@ STATISTIC(numphis, "Number of phis");
 
 void vSSA::getAnalysisUsage(AnalysisUsage &AU) const {
 	AU.addRequiredTransitive<DominanceFrontier>();
-	AU.addRequiredTransitive<DominatorTree>();
+	AU.addRequiredTransitive<DominatorTreeWrapperPass>();
 	
 	// This pass modifies the program, but not the CFG
 	AU.setPreservesCFG();
 }
 
 bool vSSA::runOnFunction(Function &F) {
-	DT_ = &getAnalysis<DominatorTree>();
+	DT_ = &getAnalysis<DominatorTreeWrapperPass>().getDomTree();
 	DF_ = &getAnalysis<DominanceFrontier>();
 	
 	// Iterate over all Basic Blocks of the Function, calling the function that creates sigma functions, if needed

@@ -1,11 +1,15 @@
-LEVEL=../../../../..
-
 all:
-	make -C DepGraph LEVEL=$(LEVEL)
-	make -C ComplexityInference LEVEL=$(LEVEL)
-	make -C RangeAnalysis LEVEL=$(LEVEL)
+	make -C ComplexityInference
+	make -C DepGraph
+	make -C RangeAnalysis
+
+install:
+	make install -C ComplexityInference
+	make install -C DepGraph
+	make install -C RangeAnalysis
 
 clean:
-	make -C ComplexityInference clean LEVEL=$(LEVEL)
-	make -C DepGraph clean LEVEL=$(LEVEL)
-	make -C RangeAnalysis clean LEVEL=$(LEVEL)
+	make clean -C ComplexityInference
+	make clean -C DepGraph
+	make clean -C RangeAnalysis
+

@@ -19,6 +19,8 @@
 #define LOOPINFOEX_H_
 
 #include "llvm/Analysis/LoopInfo.h"
+#include "llvm/IR/Dominators.h"
+
 #include <vector>
 #include <set>
 #include <stack>
@@ -148,6 +150,24 @@ public:
 
 	std::set<Loop*> getNestedLoops(Loop*);
 
+};
+
+class LoopInfoExWrapper: public LoopInfoWrapperPass {
+
+    LoopInfoEx LE;
+public:
+    LoopInfoExWrapper() : LoopInfoWrapperPass() {}
+
+    bool runOnFunction(Function &) override {
+        releaseMemory();
+        LE.Analyze(getAnalysis<DominatorTreeWrapperPass>().getDomTree());
+        return false;
+    }
+
+    LoopInfoEx &getLoopInfoEx() { return LE; }
+    const LoopInfoEx &getLoopInfoEx() const { return LE; }
+
+    void releaseMemory() override { LE.releaseMemory(); }
 };
 
 } /* namespace llvm */

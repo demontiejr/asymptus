@@ -19,7 +19,6 @@
 #include "llvm/IR/Type.h"
 
 #include "../DepGraph/DepGraph.h"
-#include "../DepGraph/LoopInfoEx.h"
 
 using namespace llvm;
 
@@ -54,24 +53,24 @@ private:
         if (!Ty)
             return NULL;
         
-        Twine format;
-        Twine formatTy;
+        std::string format;
+        std::string formatTy;
         
         if (Ty->isFloatingPointTy()) {
-            format = Twine("%f");
+            format = "%f";
             formatTy = "Float";
         } else if (Ty->isIntegerTy(64)) {
-            format = Twine("%ld");
+            format = "%ld";
             formatTy = "Long";
         } else if (Ty->isIntegerTy()) {
-            format = Twine("%d");
+            format = "%d";
             formatTy = "Int";
         } else {
-            format = Twine("%s");
+            format = "%s";
             formatTy = "";
         }
-        return getConstString(module, Twine("format")+formatTy,
-                              Twine("\n<LoopInstr> %s: %s = ") + format + Twine("\n"));
+        return getConstString(module, Twine("format")+Twine(formatTy),
+                              Twine("\n<LoopInstr> %s: %s = ") + Twine(format) + Twine("\n"));
     }
     
     static GlobalVariable *getConstString(Module *module, Twine name, Twine str) {

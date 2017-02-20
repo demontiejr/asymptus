@@ -6,13 +6,13 @@ mixing static analysis and dynamic profiling, in order to provide more accurate 
 
 # Installing
 
-Asymptus requires LLVM 3.4 to performe static analysis. To install LLVM 3.4 you can follow
+Asymptus requires LLVM 3.7 to performe static analysis. To install LLVM 3.7 you can follow
 these tutorials: [downloading a specific version of LLVM](http://llvm.org/docs/GettingStarted.html#checkout-llvm-from-subversion)
 and [installing LLVM](http://llvm.org/docs/GettingStarted.html#getting-started-quickly-a-summary).
 Note that its necessary to also install clang, the LLVM front-end.
 
-Once you have a working installation of LLVM 3.4, you can download the Asymptus binaries or
-source code and install it.
+Once you have a working installation of LLVM 3.7, you can download the Asymptus source code and install it
+by running `./configure` and `make install`.
 
 ## Usage
 

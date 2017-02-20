@@ -18,16 +18,16 @@ LoopComplexity::LoopComplexity() : FunctionPass(ID) {}
 
 void LoopComplexity::getAnalysisUsage(AnalysisUsage &AU) const {       
   AU.addRequired<functionDepGraph>();    
-  AU.addRequired<LoopInfo>(); 
-  AU.addRequired<DominatorTree>();
+  AU.addRequired<LoopInfoWrapperPass>(); 
+  AU.addRequired<DominatorTreeWrapperPass>();
   AU.addRequired<PostDominatorTree>();
   AU.setPreservesAll(); 
 } 
           
 
 bool LoopComplexity::runOnFunction(Function &F) { 
-  LoopInfo &LI = getAnalysis<LoopInfo>(); 
-  DominatorTree &DT = getAnalysis<DominatorTree>();       
+  LoopInfo &LI = getAnalysis<LoopInfoWrapperPass>().getLoopInfo();
+  DominatorTree &DT = getAnalysis<DominatorTreeWrapperPass>().getDomTree(); 
   PostDominatorTree &PDT = getAnalysis<PostDominatorTree>();    
   functionDepGraph& DepGraph = getAnalysis<functionDepGraph> ();
   Graph* depGraph = DepGraph.depGraph;
@@ -280,9 +280,8 @@ string avaliate(string expr){
 }
 
 string getLineNumber(Instruction *I) {
-  if (MDNode *N = I->getMetadata("dbg")) {
-    DILocation Loc(N);
-    Twine Line = Twine(Loc.getLineNumber());        
+  if (DILocation *Loc = I->getDebugLoc()) {
+    Twine Line = Twine(Loc->getLine());
     Twine result = Twine("Line") + Line;
     return result.str();
   }

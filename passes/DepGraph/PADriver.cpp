@@ -664,13 +664,14 @@ void PADriver::matchFormalWithActualParameters(Function &F) {
         if (F.arg_empty() || F.use_empty()) return;
 
         for (Value::use_iterator UI = F.use_begin(), E = F.use_end(); UI != E; ++UI) {
-                User *U = *UI;
+                Use &use = *UI;
+                User *U = use.getUser();
 
                 if (isa<BlockAddress>(U)) continue;
                 if (!isa<CallInst>(U) && !isa<InvokeInst>(U)) return;
 
                 CallSite CS(cast<Instruction>(U));
-                if (!CS.isCallee(UI))
+                if (!CS.isCallee(&use))
                         return;
 
                 CallSite::arg_iterator actualArgIter = CS.arg_begin();
@@ -705,10 +706,11 @@ void PADriver::matchReturnValueWithReturnVariable(Function &F) {
         }
 
         for (Value::use_iterator UI = F.use_begin(), E = F.use_end(); UI != E; ++UI) {
+                Use &use = *UI;
                 CallSite CS(*UI);
                 Instruction *Call = CS.getInstruction();
 
-                if (!Call || !CS.isCallee(UI)) continue;
+                if (!Call || !CS.isCallee(&use)) continue;
 
                 if (Call->use_empty()) continue;
 

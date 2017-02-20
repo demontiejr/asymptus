@@ -1,5 +1,5 @@
 #include "llvm/Analysis/LoopPass.h"  
-#include "llvm/DebugInfo.h"
+#include "llvm/IR/DebugInfo.h"
 #include "llvm/Analysis/PostDominators.h"
 #include "llvm/IR/BasicBlock.h"
 #include "llvm/IR/Instruction.h"
@@ -78,9 +78,8 @@ private:
 
   void setFileName(Function &F){
     Instruction *I = F.getEntryBlock().getFirstInsertionPt();
-    if (MDNode *N = I->getMetadata("dbg")) {
-      DILocation Loc(N);
-      filename = Loc.getFilename();            
+    if (DILocation *Loc = I->getDebugLoc()) {
+      filename = Loc->getFilename();            
     }
   }
 

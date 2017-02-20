@@ -1,0 +1,94 @@
+#!/usr/bin/env bash
+
+# LLVM_CONFIG can be defined to choose which LLVM installtion to use.
+[ -n "$LLVM_CONFIG" ] || LLVM_CONFIG="llvm-config"
+
+command -v "$LLVM_CONFIG" >/dev/null 2>&1 \
+    || { echo >&2 "ERROR: llvm-config not found. Aborting"; exit 1; }
+
+[ -n "$LLVM_SRC_DIR" ] || LLVM_SRC_DIR="$($LLVM_CONFIG --src-root)"
+[ -n "$LLVM_OBJ_DIR" ] || LLVM_OBJ_DIR="$($LLVM_CONFIG --obj-root)"
+[ -n "$PROJ_INSTALL_ROOT" ] || PROJ_INSTALL_ROOT="$($LLVM_CONFIG --libdir)/.."
+
+BIN_DIR=$($LLVM_CONFIG --bindir)
+
+export LLVM_CONFIG
+export LLVM_SRC_DIR
+export LLVM_OBJ_DIR
+export PROJ_INSTALL_ROOT
+
+MAKEFILE_ALL="all:\n"
+MAKEFILE_INSTALL="install:\n"
+MAKEFILE_CLEAN="clean:\n"
+
+for proj in `ls -d */`; do
+
+proj=$(basename $proj)
+
+MAKEFILE_ALL="$MAKEFILE_ALL\tmake -C $proj\n"
+MAKEFILE_INSTALL="$MAKEFILE_INSTALL\tmake install -C $proj\n"
+MAKEFILE_CLEAN="$MAKEFILE_CLEAN\tmake clean -C $proj\n"
+
+cd $proj
+
+MAKEFILE_LLVM_BODY=$(cat <<EOF
+##======- Makefile ---------------------------------*- Makefile -*-======##
+##===----------------------------------------------------------------------===##
+
+PROJECT_NAME = $proj
+LIBRARYNAME = $proj
+LOADABLE_MODULE = 1
+USEDLIBS =
+
+LEVEL = .
+
+LLVM_SRC_ROOT = $LLVM_SRC_DIR
+LLVM_OBJ_ROOT = $LLVM_OBJ_DIR
+PROJ_SRC_ROOT = .
+PROJ_OBJ_ROOT = .
+PROJ_INSTALL_ROOT = $PROJ_INSTALL_ROOT
+
+include \\\$(LLVM_OBJ_ROOT)/Makefile.config
+
+CXXFLAGS -= -stdlib
+
+include \\\$(LLVM_SRC_ROOT)/Makefile.rules
+
+EOF
+)
+
+cat <<OEOF > config.status
+#!/bin/bash
+
+echo "Using $LLVM_SRC_DIR as LLVM source directory"
+echo "Using $LLVM_OBJ_DIR as LLVM object directory"
+echo "Using $PROJ_INSTALL_ROOT as installation root"
+
+cat <<EOF > Makefile
+$MAKEFILE_LLVM_BODY
+EOF
+
+echo "Generated Makefile"
+
+OEOF
+
+touch configure
+chmod +x configure
+
+chmod +x config.status
+echo "Generated config.status"
+echo "Executing config.status"
+./config.status
+
+cd ..
+
+done
+
+echo "Generating main Makefile..."
+
+rm -f Makefile
+echo -e $MAKEFILE_ALL >> Makefile
+echo -e $MAKEFILE_INSTALL >> Makefile
+echo -e $MAKEFILE_CLEAN >> Makefile
+
+echo "Done with Makefile!"

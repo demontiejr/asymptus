@@ -12,7 +12,7 @@
 #include "llvm/IR/BasicBlock.h"
 #include "llvm/IR/Function.h"
 #include "llvm/IR/Module.h"
-#include "llvm/Support/InstIterator.h"
+#include "llvm/IR/InstIterator.h"
 #include "llvm/PassAnalysisSupport.h"
 #include "PADriver.h"
 #include "llvm/Support/Debug.h"

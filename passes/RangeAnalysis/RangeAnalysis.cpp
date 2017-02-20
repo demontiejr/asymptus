@@ -398,7 +398,8 @@ void InterProceduralRA<CGT>::MatchParametersAndReturnValues(Function &F,
 
 	for (Value::use_iterator UI = F.use_begin(), E = F.use_end(); UI != E;
 			++UI) {
-		User *U = *UI;
+                Use &use = *UI;
+		User *U = use.getUser();
 
 		// Ignore blockaddress uses
 		if (isa<BlockAddress>(U))
@@ -412,7 +413,7 @@ void InterProceduralRA<CGT>::MatchParametersAndReturnValues(Function &F,
 		Instruction *caller = cast<Instruction>(U);
 
 		CallSite CS(caller);
-		if (!CS.isCallee(UI))
+		if (!CS.isCallee(&use))
 			continue;
 
 		// Iterate over the real parameters and put them in the data structure
@@ -2343,7 +2344,7 @@ void ConstraintGraph::buildValueBranchMap(const BranchInst *br) {
 		// predicate to build the constant range. Otherwise, (const pred var),
 		// we use the swapped predicate
 		ConstantRange tmpT = (variable == Op0) ?
-			ConstantRange::makeICmpRegion(pred, CR) : ConstantRange::makeICmpRegion(swappred, CR);
+			ConstantRange::makeAllowedICmpRegion(pred, CR) : ConstantRange::makeAllowedICmpRegion(swappred, CR);
 			
 		APInt sigMin = tmpT.getSignedMin();
 		APInt sigMax = tmpT.getSignedMax();
@@ -3136,7 +3137,7 @@ void ConstraintGraph::print(const Function& F, raw_ostream& OS) const {
 }
 
 void ConstraintGraph::printToFile(const Function& F, Twine FileName) {
-	std::string ErrorInfo;
+	/*std::string ErrorInfo;
 	raw_fd_ostream file(FileName.str().c_str(), ErrorInfo);
 	if(!file.has_error()){
 		print(F, file);
@@ -3144,7 +3145,7 @@ void ConstraintGraph::printToFile(const Function& F, Twine FileName) {
 	}else{
 		errs() << "ERROR: file "<< FileName.str().c_str() << " can't be opened!\n";
 		abort();
-	}
+	}*/
 }
 
 void ConstraintGraph::printResultIntervals() {

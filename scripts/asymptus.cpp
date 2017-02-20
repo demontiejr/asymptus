@@ -12,6 +12,10 @@
 #include <cstdlib>
 
 int main(int argc, char** argv){
+  if (argc <= 1) {
+    showInfo();
+    exit(1);
+  }
   if(!osValidity ){
     std::cerr << "Operating system not supported!\n";
     return 1;
