@@ -11,8 +11,7 @@ these tutorials: [downloading a specific version of LLVM](http://llvm.org/docs/G
 and [installing LLVM](http://llvm.org/docs/GettingStarted.html#getting-started-quickly-a-summary).
 Note that its necessary to also install clang, the LLVM front-end.
 
-Once you have a working installation of LLVM 3.4, you can download the Asymptus binaries or
-source code and install it.
+Once you have a working installation of LLVM 3.4, you can download the Asymptus source code and install it.
 
 ## Usage
 
@@ -43,7 +42,6 @@ options:
 
 [![Demo video](http://img.youtube.com/vi/pzfrIDfoCEc/0.jpg)](https://youtu.be/pzfrIDfoCEc)
 
-## Download
+## LLVM 3.7
 
-- [Linux binaries](linx here)
-- [Mac OS X binaries](link here)
+If you want to run Asymptus with LLVM 3.7, go to [llvm-3.7 branch](https://github.com/demontiejr/asymptus/tree/llvm-3.7) (experimental).
